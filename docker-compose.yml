@@ -1,0 +1,84 @@
+services:
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-monetely}
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  shared:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/shared/node_modules
+    working_dir: /app
+    command: npm run dev --workspace=@monetely/shared
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "${PORT:-5000}:${PORT:-5000}"
+    env_file:
+      - path: apps/api/.env.example
+        required: true
+      - path: apps/api/.env
+        required: false
+    environment:
+      - REDIS_URI=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+      - shared
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/shared/node_modules
+    working_dir: /app
+    command: npm run dev:api
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: builder # For dev, we just need node environment, not nginx
+    ports:
+      - "${VITE_PORT:-5173}:${VITE_PORT:-5173}"
+    env_file:
+      - path: apps/web/.env.example
+        required: true
+      - path: apps/web/.env
+        required: false
+    depends_on:
+      - shared
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/shared/node_modules
+    working_dir: /app
+    command: npm run dev:web -- --host
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+

@@ -1,0 +1,9 @@
+{
+  "name": "@monetely/eslint-config",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "dependencies": {
+    "eslint": "^8.57.0"
+  }
+}

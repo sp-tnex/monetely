@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monetely - Expense Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          const savedTheme = localStorage.getItem('theme');
+          const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          const activeTheme = savedTheme || systemTheme;
+          
+          if (activeTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+            const palette = localStorage.getItem('darkPalette') || 'midnight';
+            
+            const presets = {
+              midnight: {
+                background: '222 47% 11%',
+                card: '222 47% 15%',
+                border: '222 30% 22%',
+                primary: '250 84% 60%',
+              },
+              charcoal: {
+                background: '224 20% 9%',
+                card: '224 20% 13%',
+                border: '224 15% 19%',
+                primary: '215 90% 55%',
+              },
+              forest: {
+                background: '160 35% 8%',
+                card: '160 30% 12%',
+                border: '160 20% 18%',
+                primary: '142 70% 45%',
+              },
+              amethyst: {
+                background: '270 35% 8%',
+                card: '270 30% 12%',
+                border: '270 20% 18%',
+                primary: '270 85% 60%',
+              }
+            };
+            
+            let colors = presets[palette] || presets.midnight;
+            if (palette === 'custom') {
+              try {
+                const savedCustom = localStorage.getItem('customColors');
+                if (savedCustom) colors = JSON.parse(savedCustom);
+              } catch (e) {}
+            }
+            
+            document.documentElement.style.setProperty('--background', colors.background);
+            document.documentElement.style.setProperty('--card', colors.card);
+            document.documentElement.style.setProperty('--popover', colors.card);
+            document.documentElement.style.setProperty('--secondary', colors.card);
+            document.documentElement.style.setProperty('--muted', colors.card);
+            document.documentElement.style.setProperty('--border', colors.border);
+            document.documentElement.style.setProperty('--input', colors.border);
+            document.documentElement.style.setProperty('--primary', colors.primary);
+            document.documentElement.style.setProperty('--ring', colors.primary);
+            document.documentElement.style.setProperty('--accent', colors.primary);
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

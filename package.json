@@ -1,0 +1,20 @@
+{
+  "name": "monetely-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=api",
+    "dev:web": "npm run dev --workspace=web",
+    "dev": "npm run dev:api & npm run dev:web",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "express": "^4.19.2",
+    "typescript": "^5.0.0"
+  }
+}

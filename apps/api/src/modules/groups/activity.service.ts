@@ -1,0 +1,40 @@
+import { groupActivityRepository } from './activity.repository';
+import { groupMemberRepository } from './group.repository';
+import { AppError } from '../../core/errors/AppError';
+
+export class ActivityService {
+  async logActivity(
+    groupId: string,
+    actorId: string,
+    action: string,
+    description: string,
+    metadata?: any
+  ) {
+    try {
+      await groupActivityRepository.create({
+        group: groupId as any,
+        actor: actorId as any,
+        action,
+        description,
+        metadata
+      });
+    } catch (err) {
+      console.error('Failed to log activity:', err);
+    }
+  }
+
+  async getGroupActivity(groupId: string, userId: string) {
+    const isMember = await groupMemberRepository.findOne({ group: groupId, user: userId });
+    if (!isMember) {
+      throw new AppError('You are not a member of this group', 403);
+    }
+
+    const { GroupActivity } = require('./activity.model');
+    return GroupActivity.find({ group: groupId })
+      .sort('-createdAt')
+      .limit(100)
+      .populate('actor', 'username email avatarUrl');
+  }
+}
+
+export const activityService = new ActivityService();
