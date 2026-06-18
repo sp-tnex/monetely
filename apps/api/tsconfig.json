@@ -7,9 +7,8 @@
     "module": "node16",
     "sourceMap": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "types": ["jest", "node"]
+    "emitDecoratorMetadata": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "tests"]
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/**/tests"]
 }
