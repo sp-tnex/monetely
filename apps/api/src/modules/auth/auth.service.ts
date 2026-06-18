@@ -116,7 +116,7 @@ export class AuthService {
     }
 
     const session = await this.createSession(user.id, clientInfo.userAgent, clientInfo.ipAddress);
-    const accessToken = signToken(user.id);
+    const accessToken = signToken(user.id, session.id);
     const refreshToken = signRefreshToken(user.id, session.id);
 
     return { user, accessToken, refreshToken };
@@ -134,7 +134,7 @@ export class AuthService {
     }
 
     const session = await this.createSession(user.id, clientInfo.userAgent, clientInfo.ipAddress);
-    const accessToken = signToken(user.id);
+    const accessToken = signToken(user.id, session.id);
     const refreshToken = signRefreshToken(user.id, session.id);
 
     return { user, accessToken, refreshToken };
@@ -156,7 +156,7 @@ export class AuthService {
       session.lastActiveAt = new Date();
       await session.save();
 
-      const accessToken = signToken(user.id);
+      const accessToken = signToken(user.id, decoded.sessionId);
       return { accessToken, user };
     } catch (e) {
       throw new AppError('Invalid or expired refresh token', 401);

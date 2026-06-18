@@ -3,11 +3,12 @@ import { verifyToken } from '../../utils/jwt';
 import { AppError } from '../errors/AppError';
 import { userRepository } from '../../modules/users/user.repository';
 
-// Extend Express Request object to include user
+// Extend Express Request object to include user and sessionId
 declare global {
   namespace Express {
     interface Request {
       user?: any;
+      sessionId?: string;
     }
   }
 }
@@ -32,6 +33,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     }
 
     req.user = currentUser;
+    req.sessionId = decoded.sessionId;
     next();
   } catch (error) {
     return next(new AppError('Invalid token or token has expired', 401));

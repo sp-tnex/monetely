@@ -65,6 +65,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     const wasLoggedIn = localStorage.getItem('monetely_logged_in') === 'true';
     const storedRefreshToken = localStorage.getItem('monetely_refresh_token');
     
+    if (!storedRefreshToken) {
+      localStorage.removeItem('monetely_logged_in');
+      set({ user: null, accessToken: null, isInitialized: true });
+      return;
+    }
+
     if (!wasLoggedIn) {
       set({ user: null, accessToken: null, isInitialized: true });
       
@@ -73,7 +79,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           `${API_URL}/auth/refresh`,
           { refreshToken: storedRefreshToken },
           { 
-            headers: { 'x-refresh-token': storedRefreshToken || '' },
+            headers: { 'x-refresh-token': storedRefreshToken },
             withCredentials: true 
           }
         );
@@ -93,7 +99,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         `${API_URL}/auth/refresh`,
         { refreshToken: storedRefreshToken },
         { 
-          headers: { 'x-refresh-token': storedRefreshToken || '' },
+          headers: { 'x-refresh-token': storedRefreshToken },
           withCredentials: true 
         }
       );

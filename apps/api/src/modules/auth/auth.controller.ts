@@ -161,9 +161,9 @@ export class AuthController {
   }
 
   async getSessions(req: Request, res: Response) {
-    const refreshToken = req.cookies.refreshToken;
-    let currentSessionId = '';
-    if (refreshToken) {
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken || req.headers['x-refresh-token'] as string;
+    let currentSessionId = req.sessionId || '';
+    if (!currentSessionId && refreshToken) {
       try {
         const decoded = verifyRefreshToken(refreshToken);
         currentSessionId = decoded.sessionId;
@@ -179,9 +179,9 @@ export class AuthController {
   }
 
   async clearOtherSessions(req: Request, res: Response) {
-    const refreshToken = req.cookies.refreshToken;
-    let currentSessionId = '';
-    if (refreshToken) {
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken || req.headers['x-refresh-token'] as string;
+    let currentSessionId = req.sessionId || '';
+    if (!currentSessionId && refreshToken) {
       try {
         const decoded = verifyRefreshToken(refreshToken);
         currentSessionId = decoded.sessionId;
