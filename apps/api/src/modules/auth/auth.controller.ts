@@ -12,10 +12,11 @@ export class AuthController {
     
     const { user, accessToken, refreshToken } = await authService.register(data, { userAgent, ipAddress });
 
+    const isProd = env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
@@ -54,10 +55,11 @@ export class AuthController {
     
     const { user, accessToken, refreshToken } = await authService.login(data, { userAgent, ipAddress });
 
+    const isProd = env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -90,44 +92,54 @@ export class AuthController {
   }
 
   async refresh(req: Request, res: Response) {
-    const refreshToken = req.cookies.refreshToken;
-    const { accessToken, user } = await authService.refresh(refreshToken);
-    res.status(200).json({
-      status: 'success',
-      data: {
-        accessToken,
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          avatarUrl: user.avatarUrl,
-          gravatarEmail: user.gravatarEmail,
-          theme: user.theme,
-          darkPalette: user.darkPalette,
-          customColors: user.customColors,
-          defaultCurrency: user.defaultCurrency,
-          timezone: user.timezone,
-          language: user.language,
-          notificationPreferences: user.notificationPreferences,
-          webhook: user.webhook,
-          upiId: user.upiId,
-          upiName: user.upiName,
-          upiVisibility: user.upiVisibility,
-          upiInstructions: user.upiInstructions,
-          upiQrUrl: user.upiQrUrl,
+    const refreshToken = req.cookies?.refreshToken;
+    console.log(`[Refresh Diagnostic] Cookies keys:`, req.cookies ? Object.keys(req.cookies) : 'undefined');
+    console.log(`[Refresh Diagnostic] Refresh token present:`, !!refreshToken);
+    console.log(`[Refresh Diagnostic] Headers:`, JSON.stringify(req.headers));
+
+    try {
+      const { accessToken, user } = await authService.refresh(refreshToken);
+      res.status(200).json({
+        status: 'success',
+        data: {
+          accessToken,
+          user: {
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            avatarUrl: user.avatarUrl,
+            gravatarEmail: user.gravatarEmail,
+            theme: user.theme,
+            darkPalette: user.darkPalette,
+            customColors: user.customColors,
+            defaultCurrency: user.defaultCurrency,
+            timezone: user.timezone,
+            language: user.language,
+            notificationPreferences: user.notificationPreferences,
+            webhook: user.webhook,
+            upiId: user.upiId,
+            upiName: user.upiName,
+            upiVisibility: user.upiVisibility,
+            upiInstructions: user.upiInstructions,
+            upiQrUrl: user.upiQrUrl,
+          }
         }
-      }
-    });
+      });
+    } catch (err: any) {
+      console.error(`[Refresh Diagnostic] Error in refresh:`, err.message || err);
+      throw err;
+    }
   }
 
   async logout(req: Request, res: Response) {
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies?.refreshToken;
     await authService.logout(refreshToken);
     
+    const isProd = env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie('refreshToken', '', {
       httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       expires: new Date(0),
     });
 

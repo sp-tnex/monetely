@@ -54,9 +54,21 @@ const authLimiter = rateLimit({
 });
 
 app.use(helmet());
+const allowedOrigins = [
+  env.FRONTEND_URL.replace(/\/$/, ""),
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+        callback(null, true);
+      } else {
+        callback(null, false); // Do not block request entirely, just do not set CORS header
+      }
+    },
     credentials: true,
   }),
 );
