@@ -51,10 +51,8 @@ export const Register: React.FC = () => {
     setErrors({});
 
     try {
-      await api.post('/auth/register', { username, email, password });
-      
-      const loginResponse = await api.post('/auth/login', { email, password });
-      const { user, accessToken } = loginResponse.data.data;
+      const response = await api.post('/auth/register', { username, email, password });
+      const { user, accessToken } = response.data.data;
       
       setAuth(user, accessToken);
       addToast(`Account created! Welcome, ${user.username}`, 'success');

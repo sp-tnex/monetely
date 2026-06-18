@@ -14,6 +14,8 @@ import { requestLogger } from "./core/middlewares/requestLogger";
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 app.use(requestLogger);
 
 app.disable("x-powered-by");

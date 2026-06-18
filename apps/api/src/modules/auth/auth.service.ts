@@ -15,11 +15,22 @@ export class AuthService {
     const ua = userAgent.toLowerCase();
 
     // OS detection
-    if (ua.includes('windows')) os = 'Windows';
-    else if (ua.includes('macintosh') || ua.includes('mac os')) os = 'macOS';
-    else if (ua.includes('linux')) os = 'Linux';
-    else if (ua.includes('android')) { os = 'Android'; device = 'Mobile'; }
-    else if (ua.includes('iphone') || ua.includes('ipad')) { os = 'iOS'; device = ua.includes('ipad') ? 'Tablet' : 'Mobile'; }
+    if (ua.includes('android')) {
+      os = 'Android';
+      device = ua.includes('tablet') ? 'Tablet' : 'Mobile';
+    } else if (ua.includes('iphone')) {
+      os = 'iOS';
+      device = 'Mobile';
+    } else if (ua.includes('ipad')) {
+      os = 'iOS';
+      device = 'Tablet';
+    } else if (ua.includes('windows')) {
+      os = 'Windows';
+    } else if (ua.includes('macintosh') || ua.includes('mac os')) {
+      os = 'macOS';
+    } else if (ua.includes('linux')) {
+      os = 'Linux';
+    }
 
     // Browser detection
     if (ua.includes('firefox')) browser = 'Firefox';
