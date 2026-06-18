@@ -65,15 +65,19 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
+      const storedRefreshToken = localStorage.getItem('monetely_refresh_token');
       try {
         const response = await axios.post(
           `${API_URL}/auth/refresh`,
-          {},
-          { withCredentials: true }
+          { refreshToken: storedRefreshToken },
+          { 
+            headers: { 'x-refresh-token': storedRefreshToken || '' },
+            withCredentials: true 
+          }
         );
 
-        const { accessToken, user } = response.data.data;
-        useAuthStore.getState().setAuth(user, accessToken);
+        const { accessToken, user, refreshToken } = response.data.data;
+        useAuthStore.getState().setAuth(user, accessToken, refreshToken);
 
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         processQueue(null, accessToken);

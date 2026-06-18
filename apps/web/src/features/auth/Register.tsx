@@ -52,9 +52,9 @@ export const Register: React.FC = () => {
 
     try {
       const response = await api.post('/auth/register', { username, email, password });
-      const { user, accessToken } = response.data.data;
+      const { user, accessToken, refreshToken } = response.data.data;
       
-      setAuth(user, accessToken);
+      setAuth(user, accessToken, refreshToken);
       addToast(`Account created! Welcome, ${user.username}`, 'success');
 
       const pendingInviteToken = localStorage.getItem('pending_invite_token');

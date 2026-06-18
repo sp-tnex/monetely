@@ -40,7 +40,7 @@ interface AuthState {
   user: User | null;
   accessToken: string | null;
   isInitialized: boolean;
-  setAuth: (user: User | null, accessToken: string | null) => void;
+  setAuth: (user: User | null, accessToken: string | null, refreshToken?: string | null) => void;
   clearAuth: () => void;
   initializeAuth: () => Promise<void>;
 }
@@ -49,16 +49,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   accessToken: null,
   isInitialized: false,
-  setAuth: (user, accessToken) => {
+  setAuth: (user, accessToken, refreshToken) => {
     localStorage.setItem('monetely_logged_in', 'true');
+    if (refreshToken) {
+      localStorage.setItem('monetely_refresh_token', refreshToken);
+    }
     set({ user, accessToken, isInitialized: true });
   },
   clearAuth: () => {
     localStorage.removeItem('monetely_logged_in');
+    localStorage.removeItem('monetely_refresh_token');
     set({ user: null, accessToken: null, isInitialized: true });
   },
   initializeAuth: async () => {
     const wasLoggedIn = localStorage.getItem('monetely_logged_in') === 'true';
+    const storedRefreshToken = localStorage.getItem('monetely_refresh_token');
     
     if (!wasLoggedIn) {
       set({ user: null, accessToken: null, isInitialized: true });
@@ -66,11 +71,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       try {
         const response = await axios.post(
           `${API_URL}/auth/refresh`,
-          {},
-          { withCredentials: true }
+          { refreshToken: storedRefreshToken },
+          { 
+            headers: { 'x-refresh-token': storedRefreshToken || '' },
+            withCredentials: true 
+          }
         );
-        const { user, accessToken } = response.data.data;
+        const { user, accessToken, refreshToken } = response.data.data;
         localStorage.setItem('monetely_logged_in', 'true');
+        if (refreshToken) {
+          localStorage.setItem('monetely_refresh_token', refreshToken);
+        }
         set({ user, accessToken, isInitialized: true });
       } catch (error) {
       }
@@ -80,14 +91,21 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const response = await axios.post(
         `${API_URL}/auth/refresh`,
-        {},
-        { withCredentials: true }
+        { refreshToken: storedRefreshToken },
+        { 
+          headers: { 'x-refresh-token': storedRefreshToken || '' },
+          withCredentials: true 
+        }
       );
-      const { user, accessToken } = response.data.data;
+      const { user, accessToken, refreshToken } = response.data.data;
       localStorage.setItem('monetely_logged_in', 'true');
+      if (refreshToken) {
+        localStorage.setItem('monetely_refresh_token', refreshToken);
+      }
       set({ user, accessToken, isInitialized: true });
     } catch (error) {
       localStorage.removeItem('monetely_logged_in');
+      localStorage.removeItem('monetely_refresh_token');
       set({ user: null, accessToken: null, isInitialized: true });
     }
   },

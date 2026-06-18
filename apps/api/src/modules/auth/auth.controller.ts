@@ -44,6 +44,7 @@ export class AuthController {
           upiQrUrl: user.upiQrUrl,
         },
         accessToken,
+        refreshToken,
       },
     });
   }
@@ -87,15 +88,17 @@ export class AuthController {
           upiQrUrl: user.upiQrUrl,
         },
         accessToken,
+        refreshToken,
       },
     });
   }
 
   async refresh(req: Request, res: Response) {
-    const refreshToken = req.cookies?.refreshToken;
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken || req.headers['x-refresh-token'] as string;
     console.log(`[Refresh Diagnostic] Cookies keys:`, req.cookies ? Object.keys(req.cookies) : 'undefined');
-    console.log(`[Refresh Diagnostic] Refresh token present:`, !!refreshToken);
-    console.log(`[Refresh Diagnostic] Headers:`, JSON.stringify(req.headers));
+    console.log(`[Refresh Diagnostic] Body keys:`, req.body ? Object.keys(req.body) : 'undefined');
+    console.log(`[Refresh Diagnostic] Header x-refresh-token present:`, !!req.headers['x-refresh-token']);
+    console.log(`[Refresh Diagnostic] Refresh token resolved:`, !!refreshToken);
 
     try {
       const { accessToken, user } = await authService.refresh(refreshToken);
@@ -103,6 +106,7 @@ export class AuthController {
         status: 'success',
         data: {
           accessToken,
+          refreshToken,
           user: {
             id: user._id,
             username: user.username,
