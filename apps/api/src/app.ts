@@ -66,6 +66,7 @@ import groupRoutes from './modules/groups/group.routes';
 import notificationRoutes from './modules/notifications/notification.routes';
 import inviteRoutes from './modules/invites/invite.routes';
 import retentionRoutes from './modules/retention/retention.routes';
+import exportRoutes from './modules/export/export.routes';
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
@@ -76,6 +77,7 @@ app.use('/api/v1/users/retention', retentionRoutes);
 app.use('/api/v1/groups', groupRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/invites', inviteRoutes);
+app.use('/api/v1/exports', exportRoutes);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Route ${req.originalUrl} not found`, 404));

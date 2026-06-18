@@ -23,6 +23,10 @@ import {
   LogOut,
   Trash2,
   Download,
+  Loader2,
+  FileText,
+  FileSpreadsheet,
+  Database,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { InviteModal } from "./InviteModal";
@@ -187,17 +191,24 @@ export const GroupDetails: React.FC = () => {
     }
   };
 
-  const handleExport = async (format: "json" | "csv" | "html") => {
+  const [exportingFormat, setExportingFormat] = useState<string | null>(null);
+
+  const handleExport = async (format: "pdf" | "excel" | "csv" | "json") => {
     if (!groupId) return;
+    setExportingFormat(format);
     try {
+      const endpoint = format === "json"
+        ? `/groups/${groupId}/export?format=json`
+        : `/exports/group/${groupId}?format=${format}`;
+
       const response = await api.get(
-        `/groups/${groupId}/export?format=${format}`,
+        endpoint,
         {
           responseType: "blob",
         },
       );
 
-      const contentType = response.headers["content-type"];
+      const contentType = response.headers["content-type"] || "application/octet-stream";
       const blob = new Blob([response.data], {
         type: typeof contentType === "string" ? contentType : undefined,
       });
@@ -206,7 +217,7 @@ export const GroupDetails: React.FC = () => {
       link.href = url;
 
       const ext =
-        format === "csv" ? "csv" : format === "html" ? "html" : "json";
+        format === "csv" ? "csv" : format === "excel" ? "xlsx" : format === "pdf" ? "pdf" : "json";
       link.setAttribute(
         "download",
         `monetely_group_${group?.name.replace(/\s+/g, "_") || groupId}.${ext}`,
@@ -218,13 +229,14 @@ export const GroupDetails: React.FC = () => {
       window.URL.revokeObjectURL(url);
 
       addToast(
-        `Successfully exported data as ${format.toUpperCase()}`,
+        `Successfully exported report as ${format.toUpperCase()}`,
         "success",
       );
-      setIsExportOpen(false);
     } catch (err) {
       console.error(err);
-      addToast("Failed to export group data", "error");
+      addToast(`Failed to export group report as ${format.toUpperCase()}`, "error");
+    } finally {
+      setExportingFormat(null);
     }
   };
 
@@ -865,44 +877,59 @@ export const GroupDetails: React.FC = () => {
             <strong>{group?.name}</strong>. Choose your preferred format below:
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-1">
+          <div className="grid grid-cols-2 gap-3 mt-1">
             <button
-              onClick={() => handleExport("csv")}
-              className="p-3 border border-border bg-card hover:bg-secondary/40 transition-colors rounded-lg flex flex-col items-center gap-2 text-center cursor-pointer group"
+              onClick={() => handleExport("pdf")}
+              disabled={exportingFormat !== null}
+              className="group p-3 border border-border bg-card hover:bg-secondary/40 disabled:opacity-50 transition-all rounded-lg flex flex-col items-center gap-2 text-center cursor-pointer hover:scale-[1.02]"
             >
-              <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-md border border-emerald-500/20 group-hover:bg-emerald-500/20">
-                <Download size={16} />
+              <div className="p-2 bg-red-500/10 text-red-500 rounded-md border border-red-500/20 group-hover:bg-red-500/20">
+                {exportingFormat === "pdf" ? <Loader2 className="animate-spin" size={16} /> : <FileText size={16} />}
               </div>
-              <span className="font-bold text-foreground">Excel / CSV</span>
-              <span className="text-[10px] text-muted-foreground leading-tight font-normal">
-                Spreadsheet layout of all expenses
+              <span className="font-bold text-foreground text-xs">PDF Document</span>
+              <span className="text-[9px] text-muted-foreground leading-tight font-normal">
+                Print-ready visual summary
               </span>
             </button>
 
             <button
-              onClick={() => handleExport("html")}
-              className="p-3 border border-border bg-card hover:bg-secondary/40 transition-colors rounded-lg flex flex-col items-center gap-2 text-center cursor-pointer group"
+              onClick={() => handleExport("excel")}
+              disabled={exportingFormat !== null}
+              className="group p-3 border border-border bg-card hover:bg-secondary/40 disabled:opacity-50 transition-all rounded-lg flex flex-col items-center gap-2 text-center cursor-pointer hover:scale-[1.02]"
+            >
+              <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-md border border-emerald-500/20 group-hover:bg-emerald-500/20">
+                {exportingFormat === "excel" ? <Loader2 className="animate-spin" size={16} /> : <FileSpreadsheet size={16} />}
+              </div>
+              <span className="font-bold text-foreground text-xs">Excel Sheet</span>
+              <span className="text-[9px] text-muted-foreground leading-tight font-normal">
+                Styled tabs with ledger data
+              </span>
+            </button>
+
+            <button
+              onClick={() => handleExport("csv")}
+              disabled={exportingFormat !== null}
+              className="group p-3 border border-border bg-card hover:bg-secondary/40 disabled:opacity-50 transition-all rounded-lg flex flex-col items-center gap-2 text-center cursor-pointer hover:scale-[1.02]"
             >
               <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-md border border-indigo-500/20 group-hover:bg-indigo-500/20">
-                <Download size={16} />
+                {exportingFormat === "csv" ? <Loader2 className="animate-spin" size={16} /> : <Database size={16} />}
               </div>
-              <span className="font-bold text-foreground">
-                Printable HTML / PDF
-              </span>
-              <span className="text-[10px] text-muted-foreground leading-tight font-normal">
-                Formatted print layout statement
+              <span className="font-bold text-foreground text-xs">CSV Stream</span>
+              <span className="text-[9px] text-muted-foreground leading-tight font-normal">
+                High-performance raw stream
               </span>
             </button>
 
             <button
               onClick={() => handleExport("json")}
-              className="p-3 border border-border bg-card hover:bg-secondary/40 transition-colors rounded-lg flex flex-col items-center gap-2 text-center cursor-pointer group"
+              disabled={exportingFormat !== null}
+              className="group p-3 border border-border bg-card hover:bg-secondary/40 disabled:opacity-50 transition-all rounded-lg flex flex-col items-center gap-2 text-center cursor-pointer hover:scale-[1.02]"
             >
               <div className="p-2 bg-amber-500/10 text-amber-500 rounded-md border border-amber-500/20 group-hover:bg-amber-500/20">
-                <Download size={16} />
+                {exportingFormat === "json" ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />}
               </div>
-              <span className="font-bold text-foreground">JSON Backup</span>
-              <span className="text-[10px] text-muted-foreground leading-tight font-normal">
+              <span className="font-bold text-foreground text-xs">JSON Backup</span>
+              <span className="text-[9px] text-muted-foreground leading-tight font-normal">
                 Raw database record format
               </span>
             </button>

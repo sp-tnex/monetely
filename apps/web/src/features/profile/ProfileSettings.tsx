@@ -23,10 +23,12 @@ import {
   HardDrive,
   Palette as PaletteIcon,
   Globe,
-  Bell
+  Bell,
+  Download
 } from 'lucide-react';
 import { RetentionSettings } from './RetentionSettings';
 import { MyInvites } from './MyInvites';
+import { ExportSettings } from './ExportSettings';
 import { Avatar } from '../../components/ui/Avatar';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
@@ -378,6 +380,7 @@ export const ProfileSettings: React.FC = () => {
       icon: <Mail size={18} />,
       badge: pendingInvitesCount > 0 ? pendingInvitesCount : undefined
     },
+    { id: 'exports', label: 'Exports & Reports', icon: <Download size={18} /> },
   ];
 
   const presetOptions = [
@@ -940,6 +943,12 @@ export const ProfileSettings: React.FC = () => {
           {activeTab === 'invites' && (
             <div className="max-w-4xl">
               <MyInvites hideHeader />
+            </div>
+          )}
+
+          {activeTab === 'exports' && (
+            <div className="max-w-4xl">
+              <ExportSettings />
             </div>
           )}
         </div>
