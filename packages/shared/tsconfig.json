@@ -4,7 +4,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "target": "es2022",
-    "module": "commonjs",
+    "module": "node16",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true

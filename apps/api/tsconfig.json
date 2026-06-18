@@ -4,12 +4,11 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "target": "es2022",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    // "ignoreDeprecations": "6.0",
+    "module": "node16",
     "sourceMap": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "types": ["jest", "node"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "tests"]

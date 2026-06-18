@@ -15,6 +15,6 @@
   },
   "devDependencies": {
     "express": "^4.19.2",
-    "typescript": "^5.0.0"
+    "typescript": "~6.0.2"
   }
 }
