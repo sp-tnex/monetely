@@ -61,6 +61,11 @@ export const updateProfileSchema = z.object({
       enabled: z.boolean(),
       secret: z.string().optional(),
     }).partial().optional(),
+    upiId: z.string().regex(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, 'Invalid UPI ID format. Standard formats: username@bank').optional().or(z.literal('')),
+    upiName: z.string().max(100).optional().or(z.literal('')),
+    upiVisibility: z.enum(['Visible To Everyone', 'Visible To Group Members', 'Visible Only During Settlement', 'Hidden']).optional(),
+    upiInstructions: z.string().max(500).optional().or(z.literal('')),
+    upiQrUrl: z.string().optional().or(z.literal('')),
   })
 });
 

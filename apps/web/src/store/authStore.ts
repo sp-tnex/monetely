@@ -29,6 +29,11 @@ interface User {
     enabled: boolean;
     secret: string;
   };
+  upiId?: string;
+  upiName?: string;
+  upiVisibility?: 'Visible To Everyone' | 'Visible To Group Members' | 'Visible Only During Settlement' | 'Hidden';
+  upiInstructions?: string;
+  upiQrUrl?: string;
 }
 
 interface AuthState {

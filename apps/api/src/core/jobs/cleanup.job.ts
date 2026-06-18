@@ -3,6 +3,7 @@ import { User } from '../../modules/users/user.model';
 import { Expense } from '../../modules/expenses/expense.model';
 import { DeletionWarning } from '../../modules/retention/retention.model';
 import { notificationService } from '../../modules/notifications/notification.service';
+import { ChatRoom, Message } from '../../modules/chat/chat.model';
 import logger from '../../utils/logger';
 
 export class CleanupJob {
@@ -152,7 +153,115 @@ export class CleanupJob {
       }
     }
 
+    try {
+      await this.runChatCleanup();
+    } catch (err: any) {
+      logger.error('Error running chat cleanup job:', err.message);
+    }
+
     logger.info('Data Retention Cleanup Job finished.');
+  }
+
+  private getChatCutoffDate(policy: string, customDays?: number): Date | null {
+    const now = new Date();
+    switch (policy) {
+      case '30_DAYS':
+        return new Date(now.setDate(now.getDate() - 30));
+      case '90_DAYS':
+        return new Date(now.setDate(now.getDate() - 90));
+      case '1_YEAR':
+        return new Date(now.setFullYear(now.getFullYear() - 1));
+      case 'CUSTOM':
+        return customDays ? new Date(now.setDate(now.getDate() - customDays)) : null;
+      default:
+        return null;
+    }
+  }
+
+  private getChatArchiveCutoffDate(policy: string, customDays?: number): Date | null {
+    const now = new Date();
+    switch (policy) {
+      case '30_DAYS':
+        return new Date(now.setDate(now.getDate() - 15));
+      case '90_DAYS':
+        return new Date(now.setDate(now.getDate() - 45));
+      case '1_YEAR':
+        return new Date(now.setMonth(now.getMonth() - 6));
+      case 'CUSTOM':
+        return customDays ? new Date(now.setDate(now.getDate() - Math.floor(customDays / 2))) : null;
+      default:
+        return null;
+    }
+  }
+
+  async runChatCleanup() {
+    logger.info('Starting scheduled Chat History Retention Cleanup Job...');
+    const rooms = await ChatRoom.find({ 'retentionSettings.policy': { $ne: 'FOREVER' } });
+
+    for (const room of rooms) {
+      try {
+        const { policy, customDays, autoArchiveEnabled, autoDeleteEnabled, notifyBeforeCleanup } = room.retentionSettings;
+        const archiveCutoff = this.getChatArchiveCutoffDate(policy, customDays);
+        const deletionCutoff = this.getChatCutoffDate(policy, customDays);
+        const roomId = room._id;
+
+        if (autoArchiveEnabled && archiveCutoff) {
+          const archiveResult = await Message.updateMany(
+            {
+              roomId,
+              status: 'ACTIVE',
+              createdAt: { $lt: archiveCutoff }
+            },
+            { status: 'ARCHIVED' }
+          );
+          if (archiveResult.modifiedCount > 0) {
+            logger.info(`Auto-archived ${archiveResult.modifiedCount} messages for room ${roomId}`);
+          }
+        }
+
+        if (autoDeleteEnabled && deletionCutoff) {
+          const pendingDeleteCount = await Message.countDocuments({
+            roomId,
+            status: { $in: ['ACTIVE', 'ARCHIVED'] },
+            createdAt: { $lt: deletionCutoff }
+          });
+
+          if (pendingDeleteCount > 0) {
+            if (notifyBeforeCleanup) {
+              await notificationService.notifyGroup(
+                room.groupId.toString(),
+                `${pendingDeleteCount} messages in group chat are scheduled for automated cleanup.`,
+                'EXPENSE_ADDED',
+                { type: 'CHAT_CLEANUP_WARNING', roomId }
+              );
+            }
+
+            const deleteResult = await Message.updateMany(
+              {
+                roomId,
+                status: { $in: ['ACTIVE', 'ARCHIVED'] },
+                createdAt: { $lt: deletionCutoff }
+              },
+              {
+                deleted: true,
+                deletedAt: new Date(),
+                content: 'This message was automatically deleted by retention policy.',
+                attachments: [],
+                referenceId: undefined,
+                status: 'DELETED'
+              }
+            );
+
+            if (deleteResult.modifiedCount > 0) {
+              logger.info(`Auto-deleted ${deleteResult.modifiedCount} messages for room ${roomId}`);
+            }
+          }
+        }
+      } catch (err: any) {
+        logger.error(`Error processing chat cleanup for room ${room._id}:`, err.message);
+      }
+    }
+    logger.info('Chat History Retention Cleanup Job finished.');
   }
 
   // Setup periodic job trigger

@@ -148,6 +148,11 @@ export declare const updateProfileSchema: z.ZodObject<{
             enabled?: boolean | undefined;
             secret?: string | undefined;
         }>>;
+        upiId: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+        upiName: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+        upiVisibility: z.ZodOptional<z.ZodEnum<["Visible To Everyone", "Visible To Group Members", "Visible Only During Settlement", "Hidden"]>>;
+        upiInstructions: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+        upiQrUrl: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     }, "strip", z.ZodTypeAny, {
         username?: string | undefined;
         avatarUrl?: string | undefined;
@@ -172,6 +177,11 @@ export declare const updateProfileSchema: z.ZodObject<{
             enabled?: boolean | undefined;
             secret?: string | undefined;
         } | undefined;
+        upiId?: string | undefined;
+        upiName?: string | undefined;
+        upiVisibility?: "Visible To Everyone" | "Visible To Group Members" | "Visible Only During Settlement" | "Hidden" | undefined;
+        upiInstructions?: string | undefined;
+        upiQrUrl?: string | undefined;
     }, {
         username?: string | undefined;
         avatarUrl?: string | undefined;
@@ -196,6 +206,11 @@ export declare const updateProfileSchema: z.ZodObject<{
             enabled?: boolean | undefined;
             secret?: string | undefined;
         } | undefined;
+        upiId?: string | undefined;
+        upiName?: string | undefined;
+        upiVisibility?: "Visible To Everyone" | "Visible To Group Members" | "Visible Only During Settlement" | "Hidden" | undefined;
+        upiInstructions?: string | undefined;
+        upiQrUrl?: string | undefined;
     }>;
 }, "strip", z.ZodTypeAny, {
     body: {
@@ -222,6 +237,11 @@ export declare const updateProfileSchema: z.ZodObject<{
             enabled?: boolean | undefined;
             secret?: string | undefined;
         } | undefined;
+        upiId?: string | undefined;
+        upiName?: string | undefined;
+        upiVisibility?: "Visible To Everyone" | "Visible To Group Members" | "Visible Only During Settlement" | "Hidden" | undefined;
+        upiInstructions?: string | undefined;
+        upiQrUrl?: string | undefined;
     };
 }, {
     body: {
@@ -248,6 +268,11 @@ export declare const updateProfileSchema: z.ZodObject<{
             enabled?: boolean | undefined;
             secret?: string | undefined;
         } | undefined;
+        upiId?: string | undefined;
+        upiName?: string | undefined;
+        upiVisibility?: "Visible To Everyone" | "Visible To Group Members" | "Visible Only During Settlement" | "Hidden" | undefined;
+        upiInstructions?: string | undefined;
+        upiQrUrl?: string | undefined;
     };
 }>;
 export declare const updatePasswordSchema: z.ZodObject<{

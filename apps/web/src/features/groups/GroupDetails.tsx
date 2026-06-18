@@ -8,6 +8,7 @@ import { Modal } from "../../components/ui/Modal";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Skeleton } from "../../components/ui/Skeleton";
+import { Switch } from "../../components/ui/Switch";
 import {
   History,
   TrendingUp,
@@ -27,10 +28,13 @@ import {
   FileText,
   FileSpreadsheet,
   Database,
+  Check,
+  MessageCircle
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { InviteModal } from "./InviteModal";
 import { ActivityHistory } from "./ActivityHistory";
+import { ChatContainer } from "../../components/chat/ChatContainer";
 
 import { ExpenseTimeline } from "../expenses/ExpenseTimeline";
 import { ExpenseForm } from "../expenses/ExpenseForm";
@@ -56,6 +60,15 @@ interface Group {
   createdBy: string;
   createdAt: string;
   monthlyBudget?: number;
+  allowUpiSharing?: boolean;
+  allowDirectSettlement?: boolean;
+  showUpiToMembers?: boolean;
+  settlementRemindersEnabled?: boolean;
+  webhookUrl?: string;
+  webhookEnabled?: boolean;
+  webhookSecret?: string;
+  reminderSchedule?: 'monthly' | 'weekly' | 'custom';
+  reminderDay?: number;
 }
 
 const CURRENCIES = [
@@ -80,9 +93,29 @@ export const GroupDetails: React.FC = () => {
   const [settlements, setSettlements] = useState<any[]>([]);
   const [settlementHistory, setSettlementHistory] = useState<any[]>([]);
 
+  // Announcements and settings states
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+  const [announcementTitle, setAnnouncementTitle] = useState("");
+  const [announcementMessage, setAnnouncementMessage] = useState("");
+  const [announcementExpires, setAnnouncementExpires] = useState("");
+  const [announcementScheduled, setAnnouncementScheduled] = useState("");
+  const [announcementPinned, setAnnouncementPinned] = useState(false);
+  const [isSubmittingAnnouncement, setIsSubmittingAnnouncement] = useState(false);
+
+  const [allowUpiSharing, setAllowUpiSharing] = useState(true);
+  const [allowDirectSettlement, setAllowDirectSettlement] = useState(true);
+  const [showUpiToMembers, setShowUpiToMembers] = useState(true);
+  const [settlementRemindersEnabled, setSettlementRemindersEnabled] = useState(true);
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookEnabled, setWebhookEnabled] = useState(false);
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [reminderSchedule, setReminderSchedule] = useState<'monthly' | 'weekly' | 'custom'>("monthly");
+  const [reminderDay, setReminderDay] = useState(1);
+
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    "timeline" | "settlement" | "analytics" | "activity"
+    "timeline" | "settlement" | "analytics" | "activity" | "chat"
   >("timeline");
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
 
@@ -108,6 +141,7 @@ export const GroupDetails: React.FC = () => {
         settlementsRes,
         historyRes,
         invitesRes,
+        announcementsRes,
       ] = await Promise.all([
         api.get(`/groups/${groupId}`),
         api.get(`/groups/${groupId}/members`),
@@ -117,6 +151,9 @@ export const GroupDetails: React.FC = () => {
         api
           .get(`/groups/${groupId}/invites`)
           .catch(() => ({ data: { data: { invites: [] } } })),
+        api
+          .get(`/groups/${groupId}/announcements`)
+          .catch(() => ({ data: { data: { announcements: [] } } })),
       ]);
 
       setGroup(groupRes.data.data.group);
@@ -131,6 +168,7 @@ export const GroupDetails: React.FC = () => {
         historyRes.data.data.settlements || historyRes.data.data || [],
       );
       setGroupInvites(invitesRes.data?.data?.invites || []);
+      setAnnouncements(announcementsRes.data?.data?.announcements || []);
     } catch (err: any) {
       console.error(err);
       addToast(
@@ -153,6 +191,15 @@ export const GroupDetails: React.FC = () => {
       setEditDescription(group.description || "");
       setEditCurrency(group.currency);
       setEditMonthlyBudget(group.monthlyBudget || 0);
+      setAllowUpiSharing(group.allowUpiSharing ?? true);
+      setAllowDirectSettlement(group.allowDirectSettlement ?? true);
+      setShowUpiToMembers(group.showUpiToMembers ?? true);
+      setSettlementRemindersEnabled(group.settlementRemindersEnabled ?? true);
+      setWebhookUrl(group.webhookUrl || "");
+      setWebhookEnabled(group.webhookEnabled ?? false);
+      setWebhookSecret(group.webhookSecret || "");
+      setReminderSchedule(group.reminderSchedule || "monthly");
+      setReminderDay(group.reminderDay ?? 1);
       setIsSettingsOpen(true);
     }
   };
@@ -176,6 +223,14 @@ export const GroupDetails: React.FC = () => {
         description: editDescription.trim(),
         currency: editCurrency,
         monthlyBudget: editMonthlyBudget,
+        allowUpiSharing,
+        allowDirectSettlement,
+        showUpiToMembers,
+        settlementRemindersEnabled,
+        webhookUrl: webhookUrl.trim(),
+        webhookEnabled,
+        reminderSchedule,
+        reminderDay
       });
       addToast("Group settings updated successfully!", "success");
       setIsSettingsOpen(false);
@@ -300,6 +355,8 @@ export const GroupDetails: React.FC = () => {
     from: string,
     to: string,
     amount: number,
+    notes?: string,
+    utrNumber?: string
   ) => {
     if (!groupId) return;
     try {
@@ -307,13 +364,73 @@ export const GroupDetails: React.FC = () => {
         payerId: from,
         recipientId: to,
         amount,
-        notes: "Settle Debt Consolidation",
+        notes: notes || "Settle Debt Consolidation",
+        utrNumber
       });
       fetchData();
     } catch (err: any) {
       console.error(err);
       addToast(err.response?.data?.message || "Failed to settle debt", "error");
       throw err;
+    }
+  };
+
+  const handleCreateAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!groupId) return;
+    if (!announcementTitle.trim() || !announcementMessage.trim()) {
+      addToast("Title and message are required", "error");
+      return;
+    }
+
+    setIsSubmittingAnnouncement(true);
+    try {
+      await api.post(`/groups/${groupId}/announcements`, {
+        title: announcementTitle.trim(),
+        message: announcementMessage.trim(),
+        expiresAt: announcementExpires || undefined,
+        scheduledFor: announcementScheduled || undefined,
+        isPinned: announcementPinned
+      });
+      addToast("Announcement created successfully!", "success");
+      setIsAnnouncementModalOpen(false);
+      setAnnouncementTitle("");
+      setAnnouncementMessage("");
+      setAnnouncementExpires("");
+      setAnnouncementScheduled("");
+      setAnnouncementPinned(false);
+      fetchData();
+    } catch (err: any) {
+      console.error(err);
+      addToast(err.response?.data?.message || "Failed to create announcement", "error");
+    } finally {
+      setIsSubmittingAnnouncement(false);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id: string) => {
+    if (!groupId) return;
+    if (!window.confirm("Are you sure you want to delete this announcement?")) return;
+
+    try {
+      await api.delete(`/groups/${groupId}/announcements/${id}`);
+      addToast("Announcement deleted successfully", "success");
+      fetchData();
+    } catch (err: any) {
+      console.error(err);
+      addToast(err.response?.data?.message || "Failed to delete announcement", "error");
+    }
+  };
+
+  const handleTogglePinAnnouncement = async (id: string, isPinned: boolean) => {
+    if (!groupId) return;
+    try {
+      await api.patch(`/groups/${groupId}/announcements/${id}/pin`, { isPinned: !isPinned });
+      addToast(`Announcement ${!isPinned ? "pinned" : "unpinned"} successfully!`, "success");
+      fetchData();
+    } catch (err: any) {
+      console.error(err);
+      addToast(err.response?.data?.message || "Failed to update pinned status", "error");
     }
   };
 
@@ -431,6 +548,11 @@ export const GroupDetails: React.FC = () => {
   const getUserInitials = (username: string) => {
     if (!username) return "U";
     return username.slice(0, 2).toUpperCase();
+  };
+
+  const getUsername = (userId: string) => {
+    const member = members.find((m) => m.user?._id === userId);
+    return member?.user?.username || "Unknown User";
   };
 
   const canModifyRole = (actorRole: string, targetRole: string) => {
@@ -652,18 +774,102 @@ export const GroupDetails: React.FC = () => {
               <Activity size={13} />
               <span>Activity</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab("chat")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-semibold cursor-pointer transition-colors whitespace-nowrap px-3 border uppercase tracking-wider",
+                activeTab === "chat"
+                  ? "bg-card text-foreground border-border font-bold"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <MessageCircle size={13} />
+              <span>Group Chat</span>
+            </button>
           </div>
 
           {/* Render Active Tab screen */}
           <div className="w-full">
             {activeTab === "timeline" && (
-              <ExpenseTimeline
-                expenses={expenses}
-                members={members}
-                currentUserId={currentUser?.id || ""}
-                currency={group.currency}
-                onDeleteExpense={handleDeleteExpense}
-              />
+              <div className="flex flex-col gap-4">
+                {/* Group Announcements */}
+                {announcements.length > 0 && (
+                  <div className="flex flex-col gap-2.5 mb-2">
+                    {announcements.map((ann) => (
+                      <div
+                        key={ann._id}
+                        className={`p-4 rounded-xl border text-xs relative transition-all duration-200 ${
+                          ann.isPinned
+                            ? "bg-primary/5 border-primary/20"
+                            : "bg-card border-border"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex flex-col gap-1">
+                            <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                              {ann.isPinned && (
+                                <span className="text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                                  Pinned
+                                </span>
+                              )}
+                              {ann.title}
+                            </h4>
+                            <p className="text-muted-foreground leading-relaxed mt-1 font-normal whitespace-pre-line">
+                              {ann.message}
+                            </p>
+                            <span className="text-[10px] text-muted-foreground select-none mt-2 block">
+                              Posted by {getUsername(ann.createdBy)} • {new Date(ann.createdAt).toLocaleDateString()}
+                              {ann.expiresAt && ` • Expires ${new Date(ann.expiresAt).toLocaleDateString()}`}
+                            </span>
+                          </div>
+
+                          {isAdminOrOwner && (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={() => handleTogglePinAnnouncement(ann._id, ann.isPinned)}
+                                className={`p-1 rounded cursor-pointer transition-colors ${
+                                  ann.isPinned
+                                    ? "text-primary hover:bg-primary/10"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                                }`}
+                                title={ann.isPinned ? "Unpin Announcement" : "Pin Announcement"}
+                              >
+                                <Check size={12} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAnnouncement(ann._id)}
+                                className="p-1 rounded text-destructive hover:bg-destructive/10 cursor-pointer transition-colors"
+                                title="Delete Announcement"
+                              >
+                                <Trash size={12} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {isAdminOrOwner && (
+                  <Button
+                    onClick={() => setIsAnnouncementModalOpen(true)}
+                    className="self-start flex items-center gap-1.5 text-xs font-semibold h-8 rounded-lg py-1 px-3 border border-border bg-secondary/35 text-foreground hover:bg-secondary/60 cursor-pointer shadow-none"
+                  >
+                    <MessageCircle size={13} />
+                    Post Announcement
+                  </Button>
+                )}
+
+                <ExpenseTimeline
+                  expenses={expenses}
+                  members={members}
+                  currentUserId={currentUser?.id || ""}
+                  currency={group.currency}
+                  onDeleteExpense={handleDeleteExpense}
+                />
+              </div>
             )}
 
             {activeTab === "settlement" && (
@@ -673,6 +879,9 @@ export const GroupDetails: React.FC = () => {
                 currency={group.currency}
                 onRecordSettlement={handleRecordSettlement}
                 history={settlementHistory}
+                groupId={groupId || ''}
+                group={group}
+                onFetchData={fetchData}
               />
             )}
 
@@ -686,6 +895,24 @@ export const GroupDetails: React.FC = () => {
 
             {activeTab === "activity" && (
               <ActivityHistory groupId={groupId || ""} />
+            )}
+
+            {activeTab === "chat" && (
+              <ChatContainer
+                groupId={groupId || ""}
+                currentUserId={currentUser?.id || ""}
+                members={members}
+                expenses={expenses}
+                settlements={settlements}
+                groupCurrency={group.currency}
+                onViewExpense={() => {
+                  setActiveTab("timeline");
+                }}
+                onViewSettlement={() => {
+                  setActiveTab("settlement");
+                }}
+                currentUserRole={currentUserRole}
+              />
             )}
           </div>
         </div>
@@ -991,6 +1218,145 @@ export const GroupDetails: React.FC = () => {
             disabled={isUpdatingGroup || isDeletingGroup}
           />
 
+          <div className="border-t border-border/60 pt-4 flex flex-col gap-4 text-xs">
+            <span className="font-bold text-foreground uppercase tracking-wider block mb-1">
+              Payment & Settlement Settings
+            </span>
+
+            <div className="flex justify-between items-center py-1">
+              <div className="flex flex-col pr-4">
+                <span className="font-semibold text-foreground text-left">Allow UPI Sharing</span>
+                <span className="text-muted-foreground mt-0.5 font-normal text-[10px] text-left">
+                  Permit group members to display their UPI payment details
+                </span>
+              </div>
+              <Switch
+                checked={allowUpiSharing}
+                onChange={() => setAllowUpiSharing(!allowUpiSharing)}
+                disabled={isUpdatingGroup}
+              />
+            </div>
+
+            <div className="flex justify-between items-center py-1">
+              <div className="flex flex-col pr-4">
+                <span className="font-semibold text-foreground text-left">Allow Direct Settlement</span>
+                <span className="text-muted-foreground mt-0.5 font-normal text-[10px] text-left">
+                  Allow members to record direct settle payments without billing requests
+                </span>
+              </div>
+              <Switch
+                checked={allowDirectSettlement}
+                onChange={() => setAllowDirectSettlement(!allowDirectSettlement)}
+                disabled={isUpdatingGroup}
+              />
+            </div>
+
+            <div className="flex justify-between items-center py-1">
+              <div className="flex flex-col pr-4">
+                <span className="font-semibold text-foreground text-left">Show UPI To Members</span>
+                <span className="text-muted-foreground mt-0.5 font-normal text-[10px] text-left">
+                  Reveal member UPI details to other members during settlement
+                </span>
+              </div>
+              <Switch
+                checked={showUpiToMembers}
+                onChange={() => setShowUpiToMembers(!showUpiToMembers)}
+                disabled={isUpdatingGroup}
+              />
+            </div>
+          </div>
+
+          <div className="border-t border-border/60 pt-4 flex flex-col gap-4 text-xs">
+            <span className="font-bold text-foreground uppercase tracking-wider block mb-1">
+              Outgoing Webhooks
+            </span>
+
+            <div className="flex justify-between items-center py-1">
+              <div className="flex flex-col pr-4">
+                <span className="font-semibold text-foreground text-left">Enable Webhooks</span>
+                <span className="text-muted-foreground mt-0.5 font-normal text-[10px] text-left">
+                  Trigger HTTP POST JSON payloads to your server on group events
+                </span>
+              </div>
+              <Switch
+                checked={webhookEnabled}
+                onChange={() => setWebhookEnabled(!webhookEnabled)}
+                disabled={isUpdatingGroup}
+              />
+            </div>
+
+            {webhookEnabled && (
+              <div className="flex flex-col gap-3 animate-in fade-in duration-200">
+                <Input
+                  label="Webhook URL"
+                  placeholder="https://api.yourdomain.com/group-hooks"
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  disabled={isUpdatingGroup}
+                />
+                
+                {webhookSecret && (
+                  <div className="p-2.5 bg-secondary/30 rounded-lg border border-border flex flex-col gap-1">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider text-left font-sans">Signing Secret</span>
+                    <code className="font-mono text-[10px] break-all select-all text-primary bg-primary/5 px-1.5 py-0.5 rounded self-start mt-0.5">
+                      {webhookSecret}
+                    </code>
+                    <span className="text-[9px] text-muted-foreground mt-1 text-left">
+                      Payload signature is sent in the 'X-Monetely-Signature' header
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Automated Reminders */}
+          <div className="border-t border-border/60 pt-4 flex flex-col gap-4 text-xs">
+            <span className="font-bold text-foreground uppercase tracking-wider block mb-1">
+              Automated Dues Reminders
+            </span>
+
+            <div className="flex justify-between items-center py-1">
+              <div className="flex flex-col pr-4">
+                <span className="font-semibold text-foreground text-left">Reminders Enabled</span>
+                <span className="text-muted-foreground mt-0.5 font-normal text-[10px] text-left">
+                  Automatically send outstanding balances notifications
+                </span>
+              </div>
+              <Switch
+                checked={settlementRemindersEnabled}
+                onChange={() => setSettlementRemindersEnabled(!settlementRemindersEnabled)}
+                disabled={isUpdatingGroup}
+              />
+            </div>
+
+            {settlementRemindersEnabled && (
+              <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-200">
+                <Select
+                  label="Reminder Schedule"
+                  options={[
+                    { value: "weekly", label: "Weekly" },
+                    { value: "monthly", label: "Monthly" },
+                    { value: "custom", label: "Custom" }
+                  ]}
+                  value={reminderSchedule}
+                  onChange={(e) => setReminderSchedule(e.target.value as any)}
+                  disabled={isUpdatingGroup}
+                />
+                <Input
+                  label="Reminder Day"
+                  type="number"
+                  min="0"
+                  max="31"
+                  value={reminderDay}
+                  onChange={(e) => setReminderDay(parseInt(e.target.value) || 1)}
+                  disabled={isUpdatingGroup}
+                  helperText={reminderSchedule === 'weekly' ? '0=Sun, 1=Mon, ..., 6=Sat' : 'Day of month (1-31)'}
+                />
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-3 justify-end mt-2">
             <Button
               type="button"
@@ -1045,6 +1411,85 @@ export const GroupDetails: React.FC = () => {
         groupId={groupId || ""}
         onInviteSuccess={fetchData}
       />
+
+      <Modal
+        isOpen={isAnnouncementModalOpen}
+        onClose={() => setIsAnnouncementModalOpen(false)}
+        title="Post Group Announcement"
+      >
+        <form onSubmit={handleCreateAnnouncement} className="flex flex-col gap-4">
+          <Input
+            label="Title"
+            placeholder="e.g. Monthly Settlement Reminder, New Trip Rules"
+            value={announcementTitle}
+            onChange={(e) => setAnnouncementTitle(e.target.value)}
+            disabled={isSubmittingAnnouncement}
+            required
+          />
+
+          <div className="flex flex-col gap-1.5 text-xs text-left">
+            <label className="font-semibold text-foreground mb-1 select-none">Message</label>
+            <textarea
+              rows={4}
+              placeholder="Enter your announcement message here..."
+              value={announcementMessage}
+              onChange={(e) => setAnnouncementMessage(e.target.value)}
+              disabled={isSubmittingAnnouncement}
+              required
+              className="flex w-full rounded-md border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Expiry Date (Optional)"
+              type="date"
+              value={announcementExpires}
+              onChange={(e) => setAnnouncementExpires(e.target.value)}
+              disabled={isSubmittingAnnouncement}
+            />
+            <Input
+              label="Schedule Date (Optional)"
+              type="date"
+              value={announcementScheduled}
+              onChange={(e) => setAnnouncementScheduled(e.target.value)}
+              disabled={isSubmittingAnnouncement}
+            />
+          </div>
+
+          <div className="flex items-center justify-between py-2 border-t border-border mt-1">
+            <div className="flex flex-col pr-4 text-xs text-left">
+              <span className="font-semibold text-foreground">Pin Announcement</span>
+              <span className="text-muted-foreground mt-0.5 font-normal">
+                Keep this announcement pinned at the top of the group stream
+              </span>
+            </div>
+            <Switch
+              checked={announcementPinned}
+              onChange={() => setAnnouncementPinned(!announcementPinned)}
+              disabled={isSubmittingAnnouncement}
+            />
+          </div>
+
+          <div className="flex gap-2 w-full justify-end mt-2 pt-3 border-t border-border">
+            <Button
+              type="button"
+              className="bg-secondary text-secondary-foreground font-semibold"
+              onClick={() => setIsAnnouncementModalOpen(false)}
+              disabled={isSubmittingAnnouncement}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              isLoading={isSubmittingAnnouncement}
+              className="font-semibold"
+            >
+              Publish Announcement
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Record Expense Modal */}
       <Modal

@@ -5,7 +5,15 @@ export const createGroupSchema = z.object({
     name: z.string().min(3).max(50),
     description: z.string().optional(),
     currency: z.string().default('USD'),
-    monthlyBudget: z.number().nonnegative().optional()
+    monthlyBudget: z.number().nonnegative().optional(),
+    allowUpiSharing: z.boolean().optional(),
+    allowDirectSettlement: z.boolean().optional(),
+    showUpiToMembers: z.boolean().optional(),
+    settlementRemindersEnabled: z.boolean().optional(),
+    webhookUrl: z.string().url().optional().or(z.literal('')).optional(),
+    webhookEnabled: z.boolean().optional(),
+    reminderSchedule: z.enum(['monthly', 'weekly', 'custom']).optional(),
+    reminderDay: z.number().optional()
   })
 });
 
@@ -31,7 +39,15 @@ export const updateGroupSchema = z.object({
     name: z.string().min(3).max(50).optional(),
     description: z.string().optional(),
     currency: z.string().optional(),
-    monthlyBudget: z.number().nonnegative().optional()
+    monthlyBudget: z.number().nonnegative().optional(),
+    allowUpiSharing: z.boolean().optional(),
+    allowDirectSettlement: z.boolean().optional(),
+    showUpiToMembers: z.boolean().optional(),
+    settlementRemindersEnabled: z.boolean().optional(),
+    webhookUrl: z.string().url().optional().or(z.literal('')).optional(),
+    webhookEnabled: z.boolean().optional(),
+    reminderSchedule: z.enum(['monthly', 'weekly', 'custom']).optional(),
+    reminderDay: z.number().optional()
   })
 });
 

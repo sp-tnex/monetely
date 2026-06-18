@@ -21,6 +21,11 @@ export class UserController {
           language: user.language,
           notificationPreferences: user.notificationPreferences,
           webhook: user.webhook,
+          upiId: user.upiId,
+          upiName: user.upiName,
+          upiVisibility: user.upiVisibility,
+          upiInstructions: user.upiInstructions,
+          upiQrUrl: user.upiQrUrl,
         }
       }
     });
@@ -45,6 +50,11 @@ export class UserController {
           language: updated.language,
           notificationPreferences: updated.notificationPreferences,
           webhook: updated.webhook,
+          upiId: updated.upiId,
+          upiName: updated.upiName,
+          upiVisibility: updated.upiVisibility,
+          upiInstructions: updated.upiInstructions,
+          upiQrUrl: updated.upiQrUrl,
         }
       }
     });

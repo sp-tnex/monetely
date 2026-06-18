@@ -56,7 +56,7 @@ describe('InviteService', () => {
 
     it('should create a pending invite successfully for email type', async () => {
       (groupMemberRepository.findOne as jest.Mock)
-        .mockResolvedValueOnce({ group: 'group123', user: 'user123' })
+        .mockResolvedValueOnce({ group: 'group123', user: 'user123', role: 'OWNER' })
         .mockResolvedValueOnce(null);
       
       (groupRepository.findById as jest.Mock).mockResolvedValue({ _id: 'group123', name: 'Test Group' });

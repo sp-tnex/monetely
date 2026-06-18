@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Inter";
+  font-weight: 700;
+  src: url("./assets/fonts/Inter_18pt-Bold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 500;
+  src: url("./assets/fonts/Inter_18pt-Regular.ttf") format("truetype");
+}
+
 @theme {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   

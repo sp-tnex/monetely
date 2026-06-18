@@ -30,6 +30,11 @@ export class UserService {
       enabled?: boolean;
       secret?: string;
     };
+    upiId?: string;
+    upiName?: string;
+    upiVisibility?: 'Visible To Everyone' | 'Visible To Group Members' | 'Visible Only During Settlement' | 'Hidden';
+    upiInstructions?: string;
+    upiQrUrl?: string;
   }) {
     if (data.username) {
       const existingUser = await userRepository.findByUsername(data.username);

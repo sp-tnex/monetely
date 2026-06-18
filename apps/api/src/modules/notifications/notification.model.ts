@@ -4,7 +4,7 @@ export interface INotification extends Document {
   user: mongoose.Types.ObjectId;
   message: string;
   isRead: boolean;
-  type: 'EXPENSE_ADDED' | 'GROUP_INVITE' | 'SETTLEMENT_RECORDED';
+  type: 'EXPENSE_ADDED' | 'GROUP_INVITE' | 'SETTLEMENT_RECORDED' | 'SETTLEMENT_REQUESTED' | 'MONTHLY_REMINDER' | 'ANNOUNCEMENT_CREATED';
   metadata?: Record<string, any>;
 }
 
@@ -14,7 +14,7 @@ const NotificationSchema: Schema = new Schema({
   isRead: { type: Boolean, default: false },
   type: {
     type: String,
-    enum: ['EXPENSE_ADDED', 'GROUP_INVITE', 'SETTLEMENT_RECORDED'],
+    enum: ['EXPENSE_ADDED', 'GROUP_INVITE', 'SETTLEMENT_RECORDED', 'SETTLEMENT_REQUESTED', 'MONTHLY_REMINDER', 'ANNOUNCEMENT_CREATED'],
     required: true
   },
   metadata: { type: Schema.Types.Mixed }

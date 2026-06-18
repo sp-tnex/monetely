@@ -51,7 +51,7 @@ export class GroupService {
       throw new AppError('You are not a member of this group', 403);
     }
     const { GroupMember } = require('./group.model');
-    return GroupMember.find({ group: groupId }).populate('user', 'username email avatarUrl');
+    return GroupMember.find({ group: groupId }).populate('user', 'username email avatarUrl upiId upiName upiVisibility upiInstructions upiQrUrl');
   }
 
   async addMember(groupId: string, actorId: string, email: string, role: string) {
@@ -120,7 +120,21 @@ export class GroupService {
     return newMember;
   }
 
-  async updateGroup(groupId: string, data: { name?: string; description?: string; currency?: string; monthlyBudget?: number }) {
+  async updateGroup(groupId: string, data: {
+    name?: string;
+    description?: string;
+    currency?: string;
+    monthlyBudget?: number;
+    allowUpiSharing?: boolean;
+    allowDirectSettlement?: boolean;
+    showUpiToMembers?: boolean;
+    settlementRemindersEnabled?: boolean;
+    webhookUrl?: string;
+    webhookEnabled?: boolean;
+    webhookSecret?: string;
+    reminderSchedule?: 'monthly' | 'weekly' | 'custom';
+    reminderDay?: number;
+  }) {
     const group = await groupRepository.findById(groupId);
     if (!group) {
       throw new AppError('Group not found', 404);

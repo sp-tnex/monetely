@@ -5,16 +5,40 @@ export declare const createGroupSchema: z.ZodObject<{
         description: z.ZodOptional<z.ZodString>;
         currency: z.ZodDefault<z.ZodString>;
         monthlyBudget: z.ZodOptional<z.ZodNumber>;
+        allowUpiSharing: z.ZodOptional<z.ZodBoolean>;
+        allowDirectSettlement: z.ZodOptional<z.ZodBoolean>;
+        showUpiToMembers: z.ZodOptional<z.ZodBoolean>;
+        settlementRemindersEnabled: z.ZodOptional<z.ZodBoolean>;
+        webhookUrl: z.ZodOptional<z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>>;
+        webhookEnabled: z.ZodOptional<z.ZodBoolean>;
+        reminderSchedule: z.ZodOptional<z.ZodEnum<["monthly", "weekly", "custom"]>>;
+        reminderDay: z.ZodOptional<z.ZodNumber>;
     }, "strip", z.ZodTypeAny, {
         name: string;
         currency: string;
         description?: string | undefined;
         monthlyBudget?: number | undefined;
+        allowUpiSharing?: boolean | undefined;
+        allowDirectSettlement?: boolean | undefined;
+        showUpiToMembers?: boolean | undefined;
+        settlementRemindersEnabled?: boolean | undefined;
+        webhookUrl?: string | undefined;
+        webhookEnabled?: boolean | undefined;
+        reminderSchedule?: "custom" | "monthly" | "weekly" | undefined;
+        reminderDay?: number | undefined;
     }, {
         name: string;
         description?: string | undefined;
         currency?: string | undefined;
         monthlyBudget?: number | undefined;
+        allowUpiSharing?: boolean | undefined;
+        allowDirectSettlement?: boolean | undefined;
+        showUpiToMembers?: boolean | undefined;
+        settlementRemindersEnabled?: boolean | undefined;
+        webhookUrl?: string | undefined;
+        webhookEnabled?: boolean | undefined;
+        reminderSchedule?: "custom" | "monthly" | "weekly" | undefined;
+        reminderDay?: number | undefined;
     }>;
 }, "strip", z.ZodTypeAny, {
     body: {
@@ -22,6 +46,14 @@ export declare const createGroupSchema: z.ZodObject<{
         currency: string;
         description?: string | undefined;
         monthlyBudget?: number | undefined;
+        allowUpiSharing?: boolean | undefined;
+        allowDirectSettlement?: boolean | undefined;
+        showUpiToMembers?: boolean | undefined;
+        settlementRemindersEnabled?: boolean | undefined;
+        webhookUrl?: string | undefined;
+        webhookEnabled?: boolean | undefined;
+        reminderSchedule?: "custom" | "monthly" | "weekly" | undefined;
+        reminderDay?: number | undefined;
     };
 }, {
     body: {
@@ -29,6 +61,14 @@ export declare const createGroupSchema: z.ZodObject<{
         description?: string | undefined;
         currency?: string | undefined;
         monthlyBudget?: number | undefined;
+        allowUpiSharing?: boolean | undefined;
+        allowDirectSettlement?: boolean | undefined;
+        showUpiToMembers?: boolean | undefined;
+        settlementRemindersEnabled?: boolean | undefined;
+        webhookUrl?: string | undefined;
+        webhookEnabled?: boolean | undefined;
+        reminderSchedule?: "custom" | "monthly" | "weekly" | undefined;
+        reminderDay?: number | undefined;
     };
 }>;
 export declare const addMemberSchema: z.ZodObject<{
@@ -79,16 +119,40 @@ export declare const updateGroupSchema: z.ZodObject<{
         description: z.ZodOptional<z.ZodString>;
         currency: z.ZodOptional<z.ZodString>;
         monthlyBudget: z.ZodOptional<z.ZodNumber>;
+        allowUpiSharing: z.ZodOptional<z.ZodBoolean>;
+        allowDirectSettlement: z.ZodOptional<z.ZodBoolean>;
+        showUpiToMembers: z.ZodOptional<z.ZodBoolean>;
+        settlementRemindersEnabled: z.ZodOptional<z.ZodBoolean>;
+        webhookUrl: z.ZodOptional<z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>>;
+        webhookEnabled: z.ZodOptional<z.ZodBoolean>;
+        reminderSchedule: z.ZodOptional<z.ZodEnum<["monthly", "weekly", "custom"]>>;
+        reminderDay: z.ZodOptional<z.ZodNumber>;
     }, "strip", z.ZodTypeAny, {
         description?: string | undefined;
         name?: string | undefined;
         currency?: string | undefined;
         monthlyBudget?: number | undefined;
+        allowUpiSharing?: boolean | undefined;
+        allowDirectSettlement?: boolean | undefined;
+        showUpiToMembers?: boolean | undefined;
+        settlementRemindersEnabled?: boolean | undefined;
+        webhookUrl?: string | undefined;
+        webhookEnabled?: boolean | undefined;
+        reminderSchedule?: "custom" | "monthly" | "weekly" | undefined;
+        reminderDay?: number | undefined;
     }, {
         description?: string | undefined;
         name?: string | undefined;
         currency?: string | undefined;
         monthlyBudget?: number | undefined;
+        allowUpiSharing?: boolean | undefined;
+        allowDirectSettlement?: boolean | undefined;
+        showUpiToMembers?: boolean | undefined;
+        settlementRemindersEnabled?: boolean | undefined;
+        webhookUrl?: string | undefined;
+        webhookEnabled?: boolean | undefined;
+        reminderSchedule?: "custom" | "monthly" | "weekly" | undefined;
+        reminderDay?: number | undefined;
     }>;
 }, "strip", z.ZodTypeAny, {
     body: {
@@ -96,6 +160,14 @@ export declare const updateGroupSchema: z.ZodObject<{
         name?: string | undefined;
         currency?: string | undefined;
         monthlyBudget?: number | undefined;
+        allowUpiSharing?: boolean | undefined;
+        allowDirectSettlement?: boolean | undefined;
+        showUpiToMembers?: boolean | undefined;
+        settlementRemindersEnabled?: boolean | undefined;
+        webhookUrl?: string | undefined;
+        webhookEnabled?: boolean | undefined;
+        reminderSchedule?: "custom" | "monthly" | "weekly" | undefined;
+        reminderDay?: number | undefined;
     };
 }, {
     body: {
@@ -103,6 +175,14 @@ export declare const updateGroupSchema: z.ZodObject<{
         name?: string | undefined;
         currency?: string | undefined;
         monthlyBudget?: number | undefined;
+        allowUpiSharing?: boolean | undefined;
+        allowDirectSettlement?: boolean | undefined;
+        showUpiToMembers?: boolean | undefined;
+        settlementRemindersEnabled?: boolean | undefined;
+        webhookUrl?: string | undefined;
+        webhookEnabled?: boolean | undefined;
+        reminderSchedule?: "custom" | "monthly" | "weekly" | undefined;
+        reminderDay?: number | undefined;
     };
 }>;
 export type UpdateGroupInput = z.infer<typeof updateGroupSchema>['body'];

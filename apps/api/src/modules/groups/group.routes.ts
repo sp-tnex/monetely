@@ -10,6 +10,7 @@ import expenseRouter from '../expenses/expense.routes';
 import settlementRouter from '../settlements/settlement.routes';
 import { groupInviteRouter } from '../invites/invite.routes';
 import analyticsRouter from '../analytics/analytics.routes';
+import announcementRouter from '../announcements/announcement.routes';
 
 const router = Router();
 
@@ -20,6 +21,7 @@ router.use('/:groupId/expenses', expenseRouter);
 router.use('/:groupId/settlements', settlementRouter);
 router.use('/:groupId/invites', groupInviteRouter);
 router.use('/:groupId/analytics', analyticsRouter);
+router.use('/:groupId/announcements', announcementRouter);
 
 router.route('/')
   .post(validate(createGroupSchema), asyncHandler(groupController.createGroup.bind(groupController)))

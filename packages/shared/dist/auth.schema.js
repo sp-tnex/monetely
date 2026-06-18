@@ -53,6 +53,11 @@ exports.updateProfileSchema = zod_1.z.object({
             enabled: zod_1.z.boolean(),
             secret: zod_1.z.string().optional(),
         }).partial().optional(),
+        upiId: zod_1.z.string().regex(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, 'Invalid UPI ID format. Standard formats: username@bank').optional().or(zod_1.z.literal('')),
+        upiName: zod_1.z.string().max(100).optional().or(zod_1.z.literal('')),
+        upiVisibility: zod_1.z.enum(['Visible To Everyone', 'Visible To Group Members', 'Visible Only During Settlement', 'Hidden']).optional(),
+        upiInstructions: zod_1.z.string().max(500).optional().or(zod_1.z.literal('')),
+        upiQrUrl: zod_1.z.string().optional().or(zod_1.z.literal('')),
     })
 });
 exports.updatePasswordSchema = zod_1.z.object({

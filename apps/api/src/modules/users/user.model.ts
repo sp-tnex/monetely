@@ -36,6 +36,11 @@ export interface IUser extends Document {
     enabled: boolean;
     secret: string;
   };
+  upiId?: string;
+  upiName?: string;
+  upiVisibility: 'Visible To Everyone' | 'Visible To Group Members' | 'Visible Only During Settlement' | 'Hidden';
+  upiInstructions?: string;
+  upiQrUrl?: string;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -81,6 +86,15 @@ const UserSchema: Schema = new Schema({
     enabled: { type: Boolean, default: false },
     secret: { type: String }
   },
+  upiId: { type: String, trim: true },
+  upiName: { type: String, trim: true },
+  upiVisibility: {
+    type: String,
+    enum: ['Visible To Everyone', 'Visible To Group Members', 'Visible Only During Settlement', 'Hidden'],
+    default: 'Visible To Everyone'
+  },
+  upiInstructions: { type: String },
+  upiQrUrl: { type: String }
 }, { timestamps: true });
 
 UserSchema.pre<IUser>('save', async function (next) {

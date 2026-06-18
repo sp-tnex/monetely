@@ -32,7 +32,7 @@ app.disable('x-powered-by');
 
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 20,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -67,6 +67,7 @@ import notificationRoutes from './modules/notifications/notification.routes';
 import inviteRoutes from './modules/invites/invite.routes';
 import retentionRoutes from './modules/retention/retention.routes';
 import exportRoutes from './modules/export/export.routes';
+import chatRoutes from './modules/chat/chat.routes';
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
@@ -78,6 +79,7 @@ app.use('/api/v1/groups', groupRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/invites', inviteRoutes);
 app.use('/api/v1/exports', exportRoutes);
+app.use('/api/v1/chat', chatRoutes);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Route ${req.originalUrl} not found`, 404));

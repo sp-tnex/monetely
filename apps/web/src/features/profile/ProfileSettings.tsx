@@ -24,7 +24,9 @@ import {
   Palette as PaletteIcon,
   Globe,
   Bell,
-  Download
+  Download,
+  Wallet,
+  QrCode
 } from 'lucide-react';
 import { RetentionSettings } from './RetentionSettings';
 import { MyInvites } from './MyInvites';
@@ -168,6 +170,12 @@ export const ProfileSettings: React.FC = () => {
   const [webhookUrl, setWebhookUrl] = useState(user?.webhook?.url ?? '');
   const [webhookSecret, setWebhookSecret] = useState(user?.webhook?.secret ?? '');
 
+  const [upiId, setUpiId] = useState(user?.upiId || '');
+  const [upiName, setUpiName] = useState(user?.upiName || '');
+  const [upiVisibility, setUpiVisibility] = useState(user?.upiVisibility || 'Visible To Everyone');
+  const [upiInstructions, setUpiInstructions] = useState(user?.upiInstructions || '');
+  const [upiQrUrl, setUpiQrUrl] = useState(user?.upiQrUrl || '');
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -199,6 +207,11 @@ export const ProfileSettings: React.FC = () => {
       setWebhookEnabled(user.webhook?.enabled ?? false);
       setWebhookUrl(user.webhook?.url ?? '');
       setWebhookSecret(user.webhook?.secret ?? '');
+      setUpiId(user.upiId || '');
+      setUpiName(user.upiName || '');
+      setUpiVisibility(user.upiVisibility || 'Visible To Everyone');
+      setUpiInstructions(user.upiInstructions || '');
+      setUpiQrUrl(user.upiQrUrl || '');
     }
   }, [user]);
 
@@ -258,6 +271,11 @@ export const ProfileSettings: React.FC = () => {
       return;
     }
 
+    if (upiId.trim() && !/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim())) {
+      addToast('Invalid UPI ID format. Should be username@bankname', 'error');
+      return;
+    }
+
     setIsUpdatingProfile(true);
 
     try {
@@ -274,7 +292,12 @@ export const ProfileSettings: React.FC = () => {
         webhook: {
           url: webhookUrl.trim(),
           enabled: webhookEnabled,
-        }
+        },
+        upiId: upiId.trim(),
+        upiName: upiName.trim(),
+        upiVisibility,
+        upiInstructions: upiInstructions.trim(),
+        upiQrUrl: upiQrUrl.trim()
       });
       
       const updatedUser = response.data.data.user;
@@ -371,6 +394,7 @@ export const ProfileSettings: React.FC = () => {
 
   const tabs = [
     { id: 'general', label: 'General', icon: <UserIcon size={18} /> },
+    { id: 'upi', label: 'UPI Profile', icon: <Wallet size={18} /> },
     { id: 'security', label: 'Security', icon: <Shield size={18} /> },
     { id: 'sessions', label: 'Sessions & Devices', icon: <Laptop size={18} /> },
     { id: 'retention', label: 'Data Retention', icon: <HardDrive size={18} /> },
@@ -778,6 +802,125 @@ export const ProfileSettings: React.FC = () => {
                   </CardContent>
                 </Card>
               )}
+            </div>
+          )}
+
+          {activeTab === 'upi' && (
+            <div className="flex flex-col gap-8 max-w-2xl">
+              <form onSubmit={handleUpdateProfile} className="flex flex-col gap-8 animate-in fade-in duration-200">
+                <Card className="border-border">
+                  <CardHeader className="flex flex-row items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                      <Wallet size={20} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">UPI Settlement Settings</CardTitle>
+                      <CardDescription>Configure your UPI profile to allow other group members to pay you instantly</CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-6 flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row gap-3 items-end">
+                      <div className="flex-1">
+                        <Input
+                          label="UPI ID"
+                          placeholder="rahul@paytm"
+                          value={upiId}
+                          onChange={(e) => setUpiId(e.target.value)}
+                          disabled={isUpdatingProfile}
+                          helperText="Standard formats like username@bank or phone@upi"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        className="shrink-0 h-9 font-semibold text-xs border border-border bg-card text-foreground hover:bg-secondary/40 select-none"
+                        onClick={() => {
+                          if (!upiId.trim()) {
+                            addToast('Please enter a UPI ID to verify', 'error');
+                            return;
+                          }
+                          const isValid = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim());
+                          if (isValid) {
+                            addToast('UPI ID format is valid!', 'success');
+                          } else {
+                            addToast('Invalid UPI ID format. Standard format is username@provider.', 'error');
+                          }
+                        }}
+                      >
+                        Verify UPI Format
+                      </Button>
+                    </div>
+
+                    <Input
+                      label="Preferred Payment Name"
+                      placeholder="Rahul Kumar"
+                      value={upiName}
+                      onChange={(e) => setUpiName(e.target.value)}
+                      disabled={isUpdatingProfile}
+                      helperText="Name shown to payer in their UPI application"
+                    />
+
+                    <Select
+                      label="UPI ID Visibility"
+                      options={[
+                        { value: 'Visible To Everyone', label: 'Visible To Everyone' },
+                        { value: 'Visible To Group Members', label: 'Visible To Group Members' },
+                        { value: 'Visible Only During Settlement', label: 'Visible Only During Settlement' },
+                        { value: 'Hidden', label: 'Hidden (Privacy Mode)' }
+                      ]}
+                      value={upiVisibility}
+                      onChange={(e) => setUpiVisibility(e.target.value as any)}
+                      disabled={isUpdatingProfile}
+                      helperText="Control who can see your payment details"
+                    />
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-foreground">Custom Payment Instructions (Optional)</label>
+                      <textarea
+                        rows={3}
+                        placeholder="e.g. Please add 'Trip Expenses' as payment note."
+                        value={upiInstructions}
+                        onChange={(e) => setUpiInstructions(e.target.value)}
+                        disabled={isUpdatingProfile}
+                        className="flex w-full rounded-md border border-border bg-card px-3 py-2 text-xs text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                    </div>
+
+                    <Input
+                      label="Custom QR Code URL (Optional)"
+                      placeholder="https://example.com/my-qr.png"
+                      value={upiQrUrl}
+                      onChange={(e) => setUpiQrUrl(e.target.value)}
+                      disabled={isUpdatingProfile}
+                      helperText="Link to an uploaded QR code image, if you have one"
+                    />
+
+                    {upiId.trim() && /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim()) && (
+                      <div className="p-3.5 bg-secondary/30 rounded-lg border border-border flex flex-col gap-2.5 leading-relaxed items-center justify-center text-center mt-3 animate-in slide-in-from-bottom-2 duration-200">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                          <QrCode size={12} />
+                          Generated Static QR Preview
+                        </span>
+                        <div className="bg-white p-2 rounded-lg border border-border">
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${upiName || user?.username || ''}`)}`}
+                            alt="Static Payment QR Code"
+                            className="w-32 h-32 select-none"
+                          />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">
+                          Scan to pay {upiName || user?.username || 'user'} directly via any UPI app
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Button type="submit" isLoading={isUpdatingProfile} className="self-start font-semibold">
+                  Save UPI Profile
+                </Button>
+              </form>
             </div>
           )}
 
