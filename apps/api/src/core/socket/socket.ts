@@ -72,6 +72,16 @@ export const initSocket = (httpServer: HTTPServer) => {
       status: 'online'
     });
 
+    socket.on('group:join', ({ groupId }) => {
+      socket.join(`group:${groupId}`);
+      logger.info(`User ${user.username} joined group room ${groupId}`);
+    });
+
+    socket.on('group:leave', ({ groupId }) => {
+      socket.leave(`group:${groupId}`);
+      logger.info(`User ${user.username} left group room ${groupId}`);
+    });
+
     socket.on('chat:joinRoom', async ({ roomId }, callback) => {
       try {
         const room = await ChatRoom.findById(roomId);

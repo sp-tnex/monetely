@@ -51,6 +51,11 @@ export class SettlementController {
     const result = await settlementService.broadcastOwnerReminders(req.params.groupId as string, req.user.id, req.body);
     res.status(200).json({ status: 'success', data: result });
   }
+
+  async deleteSettlement(req: Request, res: Response) {
+    const settlement = await settlementService.deleteSettlement(req.params.groupId as string, req.user.id, req.params.settlementId as string);
+    res.status(200).json({ status: 'success', data: { settlement } });
+  }
 }
 
 export const settlementController = new SettlementController();

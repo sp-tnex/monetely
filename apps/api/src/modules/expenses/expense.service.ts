@@ -5,6 +5,8 @@ import { notificationService } from '../notifications/notification.service';
 import { ApiFeatures } from '../../utils/ApiFeatures';
 import { MonthClosing } from '../analytics/analytics.model';
 import { activityService } from '../groups/activity.service';
+import { getIO } from '../../core/socket/socket';
+import logger from '../../utils/logger';
 
 export class ExpenseService {
   private async checkIsMonthClosed(groupId: string, dateInput?: any) {
@@ -58,6 +60,12 @@ export class ExpenseService {
       `Added expense "${expense.description}" of ${expense.amount} ${group?.currency || 'USD'}`,
       { expenseId: expense.id, amount: expense.amount, description: expense.description }
     );
+
+    try {
+      getIO().to(`group:${groupId}`).emit('group:dataUpdated', { groupId });
+    } catch (err: any) {
+      logger.warn(`Failed to emit group data update via Socket.IO: ${err.message}`);
+    }
 
     return expense;
   }
@@ -166,6 +174,12 @@ export class ExpenseService {
       { expenseId: updatedExpense.id, amount: updatedExpense.amount, description: updatedExpense.description }
     );
 
+    try {
+      getIO().to(`group:${groupId}`).emit('group:dataUpdated', { groupId });
+    } catch (err: any) {
+      logger.warn(`Failed to emit group data update via Socket.IO: ${err.message}`);
+    }
+
     return updatedExpense;
   }
 
@@ -198,6 +212,12 @@ export class ExpenseService {
       `Deleted expense "${expense.description}"`,
       { expenseId: expense.id, description: expense.description }
     );
+
+    try {
+      getIO().to(`group:${groupId}`).emit('group:dataUpdated', { groupId });
+    } catch (err: any) {
+      logger.warn(`Failed to emit group data update via Socket.IO: ${err.message}`);
+    }
 
     return { success: true };
   }

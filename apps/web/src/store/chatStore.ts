@@ -272,6 +272,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     get().removeSocketListeners();
 
+    socket.on('connect', () => {
+      console.log('Socket connected - rejoining active room');
+      const activeRoom = get().activeRoom;
+      if (activeRoom) {
+        socketService.emit('chat:joinRoom', { roomId: activeRoom._id }, (response: any) => {
+          if (response?.error) {
+            console.error('Failed to rejoin room on reconnect', response.error);
+          }
+        });
+      }
+    });
+
     socket.on('chat:receiveMessage', (message: Message) => {
       const activeRoom = get().activeRoom;
       if (activeRoom && message.roomId === activeRoom._id) {
@@ -368,6 +380,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   removeSocketListeners: () => {
+    socketService.off('connect');
     socketService.off('chat:receiveMessage');
     socketService.off('chat:editMessage');
     socketService.off('chat:deleteMessage');

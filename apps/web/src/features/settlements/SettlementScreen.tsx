@@ -92,7 +92,7 @@ export const SettlementScreen: React.FC<SettlementScreenProps> = ({
   const [activeQrName, setActiveQrName] = useState<string>('');
   const [activeQrAmount, setActiveQrAmount] = useState<number>(0);
   
-  const [payingTx, setPayingTx] = useState<SettlementTransaction | null>(null);
+  const [payingTx, setPayingTx] = useState<(SettlementTransaction & { _id?: string }) | null>(null);
   const [utrNumber, setUtrNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
@@ -168,14 +168,24 @@ export const SettlementScreen: React.FC<SettlementScreenProps> = ({
     
     setIsSubmittingPayment(true);
     try {
-      await onRecordSettlement(
-        payingTx.from,
-        payingTx.to,
-        payingTx.amount,
-        notes || generatePaymentNote(),
-        utrNumber.trim()
-      );
-      addToast(`Payment marked as paid! Awaiting confirmation from ${getUsername(payingTx.to)}.`, 'success');
+      if (payingTx._id) {
+        // Update existing requested/pending settlement to 'Paid' instead of creating a duplicate
+        await handleActionRequest(payingTx._id, 'pay', {
+          utrNumber: utrNumber.trim(),
+          notes: notes || generatePaymentNote()
+        });
+        addToast(`Payment marked as paid! Awaiting confirmation from ${getUsername(payingTx.to)}.`, 'success');
+      } else {
+        // Create new settlement
+        await onRecordSettlement(
+          payingTx.from,
+          payingTx.to,
+          payingTx.amount,
+          notes || generatePaymentNote(),
+          utrNumber.trim()
+        );
+        addToast(`Payment marked as paid! Awaiting confirmation from ${getUsername(payingTx.to)}.`, 'success');
+      }
       setPayingTx(null);
       setUtrNumber('');
       setNotes('');
@@ -188,13 +198,22 @@ export const SettlementScreen: React.FC<SettlementScreenProps> = ({
     }
   };
 
-  const handleActionRequest = async (settlementId: string, action: 'pay' | 'confirm' | 'dispute' | 'resolve', extraData?: any) => {
+  const handleActionRequest = async (settlementId: string, action: 'pay' | 'confirm' | 'dispute' | 'resolve' | 'delete', extraData?: any) => {
     try {
-      let endpoint = `/groups/${groupId}/settlements/${settlementId}/${action}`;
-      let data = extraData || {};
+      let endpoint = `/groups/${groupId}/settlements/${settlementId}`;
+      if (action !== 'delete') {
+        endpoint += `/${action}`;
+      }
       
-      await api.patch(endpoint, data);
-      addToast(`Settlement status updated: ${action.toUpperCase()}`, 'success');
+      if (action === 'delete') {
+        await api.delete(endpoint);
+        addToast('Settlement request deleted / ignored', 'success');
+      } else {
+        let data = extraData || {};
+        await api.patch(endpoint, data);
+        addToast(`Settlement status updated: ${action.toUpperCase()}`, 'success');
+      }
+      
       setDisputeId(null);
       setDisputeNotes('');
       onFetchData();
@@ -285,7 +304,7 @@ export const SettlementScreen: React.FC<SettlementScreenProps> = ({
                       <>
                         <Button
                           size="sm"
-                          onClick={() => setPayingTx({ from: payerId, to: recipientId, amount: item.amount })}
+                          onClick={() => setPayingTx({ _id: item._id, from: payerId, to: recipientId, amount: item.amount })}
                           className="h-7 px-2.5 bg-green-600 hover:bg-green-700 text-white text-[10px] font-semibold rounded flex items-center gap-1"
                         >
                           <Wallet size={11} />
@@ -294,7 +313,7 @@ export const SettlementScreen: React.FC<SettlementScreenProps> = ({
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleActionRequest(item._id, 'pay', { utrNumber: 'IGNORED' })}
+                          onClick={() => handleActionRequest(item._id, 'delete')}
                           className="h-7 px-2.5 border border-border text-[10px] hover:bg-secondary/40 text-muted-foreground hover:text-foreground font-semibold rounded"
                         >
                           Ignore

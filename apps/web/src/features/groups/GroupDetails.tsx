@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { InviteModal } from "./InviteModal";
+import socketService from "../../utils/socketService";
 
 import { ExpenseTimeline } from "../expenses/ExpenseTimeline";
 import { ExpenseForm } from "../expenses/ExpenseForm";
@@ -284,8 +285,42 @@ export const GroupDetails: React.FC = () => {
     }
   };
 
+  const expenseSearchRef = useRef(expenseSearch);
+  const expenseCategoryRef = useRef(expenseCategory);
+  
+  useEffect(() => {
+    expenseSearchRef.current = expenseSearch;
+    expenseCategoryRef.current = expenseCategory;
+  }, [expenseSearch, expenseCategory]);
+
   useEffect(() => {
     fetchData();
+  }, [groupId]);
+
+  useEffect(() => {
+    if (!groupId) return;
+
+    socketService.connect();
+
+    const joinGroup = () => {
+      socketService.emit("group:join", { groupId });
+    };
+
+    joinGroup();
+
+    socketService.on("connect", joinGroup);
+
+    socketService.on("group:dataUpdated", () => {
+      fetchData();
+      setExpensesPage(1);
+      fetchExpenses(1, false, expenseSearchRef.current, expenseCategoryRef.current);
+    });
+
+    return () => {
+      socketService.emit("group:leave", { groupId });
+      socketService.off("connect", joinGroup);
+      socketService.off("group:dataUpdated");
+    };
   }, [groupId]);
 
   const openSettings = () => {

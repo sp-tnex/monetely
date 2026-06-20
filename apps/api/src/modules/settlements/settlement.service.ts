@@ -9,8 +9,17 @@ import { webhookService } from '../groups/webhook.service';
 import mongoose from 'mongoose';
 import { Settlement } from './settlement.model';
 import logger from '../../utils/logger';
+import { getIO } from '../../core/socket/socket';
 
 export class SettlementService {
+  private broadcastUpdate(groupId: string) {
+    try {
+      getIO().to(`group:${groupId}`).emit('group:dataUpdated', { groupId });
+    } catch (err: any) {
+      logger.warn(`Failed to emit group data update via Socket.IO: ${err.message}`);
+    }
+  }
+
   async getVisibleUpi(creditorId: string, debtorId: string, group: any) {
     if (!group.allowUpiSharing || !group.showUpiToMembers) {
       return undefined;
@@ -194,6 +203,7 @@ export class SettlementService {
       );
     }
 
+    this.broadcastUpdate(groupId);
     return settlement;
   }
 
@@ -250,6 +260,7 @@ export class SettlementService {
       { settlementId: settlement.id, amount: data.amount, debtor: debtorName, creditor: creditorName }
     );
 
+    this.broadcastUpdate(groupId);
     return settlement;
   }
 
@@ -284,6 +295,7 @@ export class SettlementService {
       { groupId, settlementId: settlement.id }
     );
 
+    this.broadcastUpdate(groupId);
     return settlement;
   }
 
@@ -323,6 +335,7 @@ export class SettlementService {
       { settlementId: settlement.id, amount: settlement.amount, debtor: debtorName, creditor: creditorName }
     );
 
+    this.broadcastUpdate(groupId);
     return settlement;
   }
 
@@ -354,6 +367,7 @@ export class SettlementService {
       { groupId, settlementId: settlement.id }
     );
 
+    this.broadcastUpdate(groupId);
     return settlement;
   }
 
@@ -400,6 +414,7 @@ export class SettlementService {
       );
     }
 
+    this.broadcastUpdate(groupId);
     return settlement;
   }
 
@@ -497,6 +512,42 @@ export class SettlementService {
       .sort('-date')
       .populate('payer', 'username email avatarUrl upiId upiName upiVisibility upiInstructions upiQrUrl')
       .populate('recipient', 'username email avatarUrl upiId upiName upiVisibility upiInstructions upiQrUrl');
+  }
+
+  async deleteSettlement(groupId: string, userId: string, settlementId: string) {
+    const settlement = await Settlement.findById(settlementId);
+    if (!settlement) {
+      throw new AppError('Settlement not found', 404);
+    }
+
+    const isPayer = settlement.payer.toString() === userId;
+    const isRecipient = settlement.recipient.toString() === userId;
+    const groupMember = await groupMemberRepository.findOne({ group: groupId, user: userId });
+    const isAdmin = groupMember && (groupMember.role === 'OWNER' || groupMember.role === 'ADMIN');
+
+    if (!isPayer && !isRecipient && !isAdmin) {
+      throw new AppError('You do not have permission to delete this settlement', 403);
+    }
+
+    if (settlement.status !== 'Pending' && settlement.status !== 'Requested') {
+      throw new AppError('Only pending or requested settlements can be deleted', 400);
+    }
+
+    await Settlement.findByIdAndDelete(settlementId);
+
+    const user = await userRepository.findById(userId);
+    const username = user ? user.username : 'Someone';
+    await activityService.logActivity(
+      groupId,
+      userId,
+      'SETTLEMENT_RECORDED',
+      `${username} cancelled the settlement request of ${settlement.amount}`,
+      { settlementId, amount: settlement.amount }
+    );
+
+    this.broadcastUpdate(groupId);
+
+    return settlement;
   }
 }
 

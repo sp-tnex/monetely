@@ -20,6 +20,9 @@ router.route('/history')
 router.route('/request')
   .post(requireGroupPermission('VIEW_GROUP'), asyncHandler(settlementController.requestSettlement.bind(settlementController)));
 
+router.route('/:settlementId')
+  .delete(requireGroupPermission('RECORD_SETTLEMENT'), asyncHandler(settlementController.deleteSettlement.bind(settlementController)));
+
 router.route('/:settlementId/pay')
   .patch(requireGroupPermission('VIEW_GROUP'), asyncHandler(settlementController.markAsPaid.bind(settlementController)));
 
