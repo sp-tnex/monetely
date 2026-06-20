@@ -92,7 +92,8 @@ export const Dashboard: React.FC = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'owed' | 'owe' | 'settled'>('all');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isGroupsLoading, setIsGroupsLoading] = useState(true);
+  const [isBalancesLoading, setIsBalancesLoading] = useState(true);
 
   const [groupBalances, setGroupBalances] = useState<Record<string, number>>({});
   const [totals, setTotals] = useState<{ owed: Record<string, number>; owe: Record<string, number> }>({
@@ -102,11 +103,18 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchGroupsAndBalances = async () => {
-      setIsLoading(true);
+      setIsGroupsLoading(true);
+      setIsBalancesLoading(true);
       try {
         const response = await api.get('/groups');
         const groupsData: Group[] = response.data.data.groups;
         setGroups(groupsData);
+        setIsGroupsLoading(false);
+
+        if (groupsData.length === 0) {
+          setIsBalancesLoading(false);
+          return;
+        }
 
         const settlementsPromises = groupsData.map(async (group) => {
           try {
@@ -145,8 +153,9 @@ export const Dashboard: React.FC = () => {
         setTotals({ owed: owedMap, owe: oweMap });
       } catch (err) {
         console.error('Failed to fetch dashboard data', err);
+        setIsGroupsLoading(false);
       } finally {
-        setIsLoading(false);
+        setIsBalancesLoading(false);
       }
     };
 
@@ -301,7 +310,7 @@ export const Dashboard: React.FC = () => {
                 Net Balance
               </span>
               <div className="mt-1 min-h-[32px] flex items-center">
-                {isLoading ? (
+                {isBalancesLoading ? (
                   <Skeleton className="h-6 w-24" />
                 ) : (
                   renderCurrencyPills(netBalance, 'net')
@@ -329,7 +338,7 @@ export const Dashboard: React.FC = () => {
                 You Are Owed
               </span>
               <div className="mt-1 min-h-[32px] flex items-center">
-                {isLoading ? (
+                {isBalancesLoading ? (
                   <Skeleton className="h-6 w-24" />
                 ) : (
                   renderCurrencyPills(totals.owed, 'owed')
@@ -352,7 +361,7 @@ export const Dashboard: React.FC = () => {
                 You Owe
               </span>
               <div className="mt-1 min-h-[32px] flex items-center">
-                {isLoading ? (
+                {isBalancesLoading ? (
                   <Skeleton className="h-6 w-24" />
                 ) : (
                   renderCurrencyPills(totals.owe, 'owe')
@@ -412,7 +421,7 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {isLoading ? (
+        {isGroupsLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((n) => (
               <div key={n} className="border border-border bg-card rounded-lg p-5 flex flex-col gap-3">
@@ -488,7 +497,9 @@ export const Dashboard: React.FC = () => {
                   <div className="mt-4 pt-3 border-t border-border flex flex-col gap-2.5">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest select-none">Your Balance</span>
-                      {Math.abs(balance) <= 0.01 ? (
+                      {isBalancesLoading ? (
+                        <Skeleton className="h-4 w-16" />
+                      ) : Math.abs(balance) <= 0.01 ? (
                         <span className="text-[10px] font-semibold text-muted-foreground bg-secondary px-2 py-0.5 rounded border border-border select-none">
                           Settled
                         </span>

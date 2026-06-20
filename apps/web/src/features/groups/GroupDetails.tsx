@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../config/api";
 import { useToastStore } from "../../store/toastStore";
@@ -33,13 +33,14 @@ import {
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { InviteModal } from "./InviteModal";
-import { ActivityHistory } from "./ActivityHistory";
-import { ChatContainer } from "../../components/chat/ChatContainer";
 
 import { ExpenseTimeline } from "../expenses/ExpenseTimeline";
 import { ExpenseForm } from "../expenses/ExpenseForm";
-import { SettlementScreen } from "../settlements/SettlementScreen";
-import { AnalyticsScreen } from "../analytics/AnalyticsScreen";
+
+const SettlementScreen = lazy(() => import("../settlements/SettlementScreen").then(m => ({ default: m.SettlementScreen })));
+const AnalyticsScreen = lazy(() => import("../analytics/AnalyticsScreen").then(m => ({ default: m.AnalyticsScreen })));
+const ActivityHistory = lazy(() => import("./ActivityHistory").then(m => ({ default: m.ActivityHistory })));
+const ChatContainer = lazy(() => import("../../components/chat/ChatContainer").then(m => ({ default: m.ChatContainer })));
 
 interface Member {
   _id: string;
@@ -873,46 +874,74 @@ export const GroupDetails: React.FC = () => {
             )}
 
             {activeTab === "settlement" && (
-              <SettlementScreen
-                transactions={settlements}
-                members={members}
-                currency={group.currency}
-                onRecordSettlement={handleRecordSettlement}
-                history={settlementHistory}
-                groupId={groupId || ''}
-                group={group}
-                onFetchData={fetchData}
-              />
+              <Suspense fallback={
+                <div className="h-48 flex flex-col items-center justify-center gap-2">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider animate-pulse">Loading settlements...</span>
+                </div>
+              }>
+                <SettlementScreen
+                  transactions={settlements}
+                  members={members}
+                  currency={group.currency}
+                  onRecordSettlement={handleRecordSettlement}
+                  history={settlementHistory}
+                  groupId={groupId || ''}
+                  group={group}
+                  onFetchData={fetchData}
+                />
+              </Suspense>
             )}
 
             {activeTab === "analytics" && (
-              <AnalyticsScreen
-                expenses={expenses}
-                members={members}
-                currency={group.currency}
-              />
+              <Suspense fallback={
+                <div className="h-48 flex flex-col items-center justify-center gap-2">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider animate-pulse">Loading metrics...</span>
+                </div>
+              }>
+                <AnalyticsScreen
+                  expenses={expenses}
+                  members={members}
+                  currency={group.currency}
+                />
+              </Suspense>
             )}
 
             {activeTab === "activity" && (
-              <ActivityHistory groupId={groupId || ""} />
+              <Suspense fallback={
+                <div className="h-48 flex flex-col items-center justify-center gap-2">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider animate-pulse">Loading activities...</span>
+                </div>
+              }>
+                <ActivityHistory groupId={groupId || ""} />
+              </Suspense>
             )}
 
             {activeTab === "chat" && (
-              <ChatContainer
-                groupId={groupId || ""}
-                currentUserId={currentUser?.id || ""}
-                members={members}
-                expenses={expenses}
-                settlements={settlements}
-                groupCurrency={group.currency}
-                onViewExpense={() => {
-                  setActiveTab("timeline");
-                }}
-                onViewSettlement={() => {
-                  setActiveTab("settlement");
-                }}
-                currentUserRole={currentUserRole}
-              />
+              <Suspense fallback={
+                <div className="h-48 flex flex-col items-center justify-center gap-2">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider animate-pulse">Loading chat room...</span>
+                </div>
+              }>
+                <ChatContainer
+                  groupId={groupId || ""}
+                  currentUserId={currentUser?.id || ""}
+                  members={members}
+                  expenses={expenses}
+                  settlements={settlements}
+                  groupCurrency={group.currency}
+                  onViewExpense={() => {
+                    setActiveTab("timeline");
+                  }}
+                  onViewSettlement={() => {
+                    setActiveTab("settlement");
+                  }}
+                  currentUserRole={currentUserRole}
+                />
+              </Suspense>
             )}
           </div>
         </div>
