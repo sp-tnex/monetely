@@ -101,6 +101,13 @@ export const Dashboard: React.FC = () => {
     owe: {},
   });
 
+  const [groupsPage, setGroupsPage] = useState(1);
+  const GROUPS_PER_PAGE = 6;
+
+  useEffect(() => {
+    setGroupsPage(1);
+  }, [searchQuery, activeFilter]);
+
   useEffect(() => {
     const fetchGroupsAndBalances = async () => {
       setIsGroupsLoading(true);
@@ -459,71 +466,105 @@ export const Dashboard: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredGroups.map((group) => {
-              const balance = groupBalances[group._id] || 0;
-              const initials = getInitials(group.name);
-              const isOwed = balance > 0.01;
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(() => {
+                const startIndex = (groupsPage - 1) * GROUPS_PER_PAGE;
+                const endIndex = startIndex + GROUPS_PER_PAGE;
+                const groupsToDisplay = filteredGroups.slice(startIndex, endIndex);
 
-              return (
-                <div
-                  key={group._id}
-                  onClick={() => navigate(`/groups/${group._id}`)}
-                  className="group relative flex flex-col justify-between rounded-lg border border-border bg-card p-5 hover:bg-secondary/20 transition-colors duration-150 cursor-pointer overflow-hidden"
+                return groupsToDisplay.map((group) => {
+                  const balance = groupBalances[group._id] || 0;
+                  const initials = getInitials(group.name);
+                  const isOwed = balance > 0.01;
+
+                  return (
+                    <div
+                      key={group._id}
+                      onClick={() => navigate(`/groups/${group._id}`)}
+                      className="group relative flex flex-col justify-between rounded-lg border border-border bg-card p-5 hover:bg-secondary/20 transition-colors duration-150 cursor-pointer overflow-hidden"
+                    >
+                      <div>
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="h-10 w-10 rounded-lg flex items-center justify-center text-foreground bg-secondary border border-border font-bold text-sm shrink-0">
+                            {initials}
+                          </div>
+                          <div className="flex flex-col items-end shrink-0 select-none">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-secondary border border-border/80 uppercase tracking-widest text-muted-foreground">
+                              {group.currency}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground mt-2 font-normal">
+                              Created {new Date(group.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        <h3 className="text-sm font-semibold text-foreground mt-3 group-hover:text-primary transition-colors line-clamp-1">
+                          {group.name}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2 min-h-[32px] font-normal leading-relaxed">
+                          {group.description || 'No description provided.'}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-border flex flex-col gap-2.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest select-none">Your Balance</span>
+                          {isBalancesLoading ? (
+                            <Skeleton className="h-4 w-16" />
+                          ) : Math.abs(balance) <= 0.01 ? (
+                            <span className="text-[10px] font-semibold text-muted-foreground bg-secondary px-2 py-0.5 rounded border border-border select-none">
+                              Settled
+                            </span>
+                          ) : isOwed ? (
+                            <span className="text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-950/20 px-2 py-0.5 rounded border border-green-200">
+                              Receivable: {group.currency} {balance.toFixed(2)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-destructive bg-red-50 dark:bg-red-950/20 px-2 py-0.5 rounded border border-red-200">
+                              Payable: {group.currency} {Math.abs(balance).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex justify-between items-center text-[10px] font-semibold text-muted-foreground group-hover:text-foreground mt-0.5">
+                          <span className="flex items-center gap-1 text-[9px] uppercase tracking-wider font-semibold select-none">
+                            View details
+                          </span>
+                          <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {filteredGroups.length > GROUPS_PER_PAGE && (
+              <div className="flex justify-between items-center bg-card border border-border p-3 rounded-lg select-none">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={groupsPage === 1}
+                  onClick={() => setGroupsPage(prev => Math.max(prev - 1, 1))}
+                  className="text-xs h-8 px-3"
                 >
-                  <div>
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="h-10 w-10 rounded-lg flex items-center justify-center text-foreground bg-secondary border border-border font-bold text-sm shrink-0">
-                        {initials}
-                      </div>
-                      <div className="flex flex-col items-end shrink-0 select-none">
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-secondary border border-border/80 uppercase tracking-widest text-muted-foreground">
-                          {group.currency}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground mt-2 font-normal">
-                          Created {new Date(group.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    <h3 className="text-sm font-semibold text-foreground mt-3 group-hover:text-primary transition-colors line-clamp-1">
-                      {group.name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2 min-h-[32px] font-normal leading-relaxed">
-                      {group.description || 'No description provided.'}
-                    </p>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-border flex flex-col gap-2.5">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest select-none">Your Balance</span>
-                      {isBalancesLoading ? (
-                        <Skeleton className="h-4 w-16" />
-                      ) : Math.abs(balance) <= 0.01 ? (
-                        <span className="text-[10px] font-semibold text-muted-foreground bg-secondary px-2 py-0.5 rounded border border-border select-none">
-                          Settled
-                        </span>
-                      ) : isOwed ? (
-                        <span className="text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-950/20 px-2 py-0.5 rounded border border-green-200">
-                          Receivable: {group.currency} {balance.toFixed(2)}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold text-destructive bg-red-50 dark:bg-red-950/20 px-2 py-0.5 rounded border border-red-200">
-                          Payable: {group.currency} {Math.abs(balance).toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex justify-between items-center text-[10px] font-semibold text-muted-foreground group-hover:text-foreground mt-0.5">
-                      <span className="flex items-center gap-1 text-[9px] uppercase tracking-wider font-semibold select-none">
-                        View details
-                      </span>
-                      <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                  Previous
+                </Button>
+                <span className="text-xs text-muted-foreground font-semibold">
+                  Page {groupsPage} of {Math.ceil(filteredGroups.length / GROUPS_PER_PAGE)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={groupsPage >= Math.ceil(filteredGroups.length / GROUPS_PER_PAGE)}
+                  onClick={() => setGroupsPage(prev => Math.min(prev + 1, Math.ceil(filteredGroups.length / GROUPS_PER_PAGE)))}
+                  className="text-xs h-8 px-3"
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

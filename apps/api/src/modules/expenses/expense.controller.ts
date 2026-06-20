@@ -8,8 +8,8 @@ export class ExpenseController {
   }
 
   async getGroupExpenses(req: Request, res: Response) {
-    const { expenses, total } = await expenseService.getGroupExpenses(req.params.groupId as string, req.user.id, req.query);
-    res.status(200).json({ status: 'success', data: { expenses, total } });
+    const result = await expenseService.getGroupExpenses(req.params.groupId as string, req.user.id, req.query);
+    res.status(200).json({ status: 'success', data: result });
   }
 
   async getExpenseDetails(req: Request, res: Response) {

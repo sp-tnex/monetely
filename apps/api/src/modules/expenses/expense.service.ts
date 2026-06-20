@@ -69,18 +69,36 @@ export class ExpenseService {
     }
 
     const { Expense } = require('./expense.model');
-    // Default to only showing active and archived expenses, hide deleted ones
-    const baseQuery = Expense.find({ group: groupId, status: { $ne: 'DELETED' } });
-    const features = new ApiFeatures(baseQuery, queryParams)
-      .filter()
+    
+    const queryObj: any = { group: groupId, status: { $ne: 'DELETED' } };
+    
+    if (queryParams.search) {
+      queryObj.description = { $regex: queryParams.search, $options: 'i' };
+    }
+    
+    if (queryParams.category && queryParams.category !== 'all') {
+      queryObj.category = queryParams.category;
+    }
+
+    const apiQueryParams = { ...queryParams };
+    delete apiQueryParams.search;
+    delete apiQueryParams.category;
+
+    const baseQuery = Expense.find(queryObj);
+    const features = new ApiFeatures(baseQuery, apiQueryParams)
       .sort()
       .limitFields()
       .paginate();
 
     const expenses = await features.query.populate('paidBy', 'username email avatarUrl');
-    const total = await Expense.countDocuments({ group: groupId, status: { $ne: 'DELETED' } });
+    const total = await Expense.countDocuments(queryObj);
 
-    return { expenses, total };
+    const page = parseInt(queryParams.page as string, 10) || 1;
+    const limit = parseInt(queryParams.limit as string, 10) || 10;
+    const skip = (page - 1) * limit;
+    const hasMore = skip + expenses.length < total;
+
+    return { expenses, total, hasMore, page, limit };
   }
 
   async getExpenseById(expenseId: string, userId: string) {

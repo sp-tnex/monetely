@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../config/api';
 import { useToastStore } from '../../store/toastStore';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -45,25 +45,72 @@ export const ActivityHistory: React.FC<ActivityHistoryProps> = ({ groupId }) => 
   const { addToast } = useToastStore();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  const fetchActivities = async () => {
-    setIsLoading(true);
+  const observerRef = useRef<HTMLDivElement>(null);
+
+  const fetchActivities = async (pageNum: number, append: boolean) => {
+    if (pageNum === 1) {
+      setIsLoading(true);
+    } else {
+      setIsLoadingMore(true);
+    }
     try {
-      const response = await api.get(`/groups/${groupId}/activity`);
-      setActivities(response.data.data.activities || []);
+      const response = await api.get(`/groups/${groupId}/activity`, {
+        params: {
+          page: pageNum,
+          limit: 10
+        }
+      });
+      const data = response.data.data;
+      const fetchedActivities = data.activities || [];
+
+      setActivities(prev => append ? [...prev, ...fetchedActivities] : fetchedActivities);
+      setHasMore(data.hasMore ?? false);
     } catch (err: any) {
       console.error('Failed to fetch group activities:', err);
       addToast(err.response?.data?.message || 'Failed to load activity history', 'error');
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
   };
 
   useEffect(() => {
     if (groupId) {
-      fetchActivities();
+      setPage(1);
+      fetchActivities(1, false);
     }
   }, [groupId]);
+
+  const handleLoadMore = () => {
+    if (isLoadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchActivities(nextPage, true);
+  };
+
+  useEffect(() => {
+    if (!hasMore || isLoading || isLoadingMore) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        handleLoadMore();
+      }
+    }, { threshold: 0.1 });
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observer.unobserve(observerRef.current);
+      }
+    };
+  }, [hasMore, isLoading, isLoadingMore, page]);
 
   const getActionStyle = (action: string) => {
     switch (action) {
@@ -165,7 +212,13 @@ export const ActivityHistory: React.FC<ActivityHistoryProps> = ({ groupId }) => 
     return username.slice(0, 2).toUpperCase();
   };
 
-  if (isLoading) {
+  const handleRefresh = () => {
+    setPage(1);
+    fetchActivities(1, false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  if (isLoading && activities.length === 0) {
     return (
       <div className="flex flex-col gap-5 py-4">
         {[1, 2, 3, 4].map((n) => (
@@ -196,70 +249,96 @@ export const ActivityHistory: React.FC<ActivityHistoryProps> = ({ groupId }) => 
   }
 
   return (
-    <div className="flex flex-col gap-6 py-2">
+    <div className="flex flex-col gap-6 py-2 animate-in fade-in duration-200">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
           <Activity size={18} className="text-primary" />
           Group Activity History
         </h3>
         <button
-          onClick={fetchActivities}
-          className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer transition-all"
+          onClick={handleRefresh}
+          disabled={isLoading}
+          className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer transition-all disabled:opacity-50"
         >
-          <RefreshCw size={12} />
+          <RefreshCw size={12} className={cn(isLoading && "animate-spin")} />
           Refresh Log
         </button>
       </div>
 
-      <div className="relative border-l border-border/60 ml-4 md:ml-6 pl-6 md:pl-8 space-y-6">
-        {activities.map((item) => {
-          const { icon, colorClass, dotColor } = getActionStyle(item.action);
-          const initials = getUserInitials(item.actor?.username || 'System');
+      <div className="max-h-[460px] overflow-y-auto pr-2 scrollbar-thin flex flex-col gap-6">
+        <div className="relative border-l border-border/60 ml-4 md:ml-6 pl-6 md:pl-8 space-y-6">
+          {activities.map((item) => {
+            const { icon, colorClass, dotColor } = getActionStyle(item.action);
+            const initials = getUserInitials(item.actor?.username || 'System');
 
-          return (
-            <div key={item._id} className="relative group/item">
-              <span className={cn(
-                "absolute -left-[31px] md:-left-[39px] top-1.5 flex h-4 w-4 rounded-full border border-card items-center justify-center shadow-sm shrink-0",
-                dotColor
-              )}>
-                <span className="h-1.5 w-1.5 rounded-full bg-card" />
-              </span>
-
-              <div className="flex flex-col md:flex-row gap-4 items-start md:items-center bg-card hover:bg-secondary/15 border border-border/60 hover:border-border p-4 rounded-2xl shadow-sm transition-all duration-200">
-                <div className={cn(
-                  "p-2.5 rounded-xl border flex items-center justify-center shrink-0 shadow-sm",
-                  colorClass
+            return (
+              <div key={item._id} className="relative group/item">
+                <span className={cn(
+                  "absolute -left-[31px] md:-left-[39px] top-1.5 flex h-4 w-4 rounded-full border border-card items-center justify-center shadow-sm shrink-0",
+                  dotColor
                 )}>
-                  {icon}
-                </div>
+                  <span className="h-1.5 w-1.5 rounded-full bg-card" />
+                </span>
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground leading-snug">
-                    {item.description}
-                  </p>
-                  
-                  <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    {item.actor && (
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-5 w-5 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center justify-center text-[9px] font-black uppercase shrink-0">
-                          {initials}
+                <div className="flex flex-col md:flex-row gap-4 items-start md:items-center bg-card hover:bg-secondary/15 border border-border/60 hover:border-border p-4 rounded-2xl shadow-sm transition-all duration-200">
+                  <div className={cn(
+                    "p-2.5 rounded-xl border flex items-center justify-center shrink-0 shadow-sm",
+                    colorClass
+                  )}>
+                    {icon}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground leading-snug">
+                      {item.description}
+                    </p>
+                    
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                      {item.actor && (
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-5 w-5 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center justify-center text-[9px] font-black uppercase shrink-0">
+                            {initials}
+                          </div>
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {item.actor.username}
+                          </span>
                         </div>
-                        <span className="text-xs text-muted-foreground font-medium">
-                          {item.actor.username}
-                        </span>
-                      </div>
-                    )}
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium">
-                      <Clock size={11} />
-                      {new Date(item.createdAt).toLocaleDateString()} {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                      )}
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium">
+                        <Clock size={11} />
+                        {new Date(item.createdAt).toLocaleDateString()} {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+
+        {hasMore && (
+          <div ref={observerRef} className="flex justify-center items-center py-4 select-none">
+            <button
+              onClick={handleLoadMore}
+              disabled={isLoadingMore}
+              className="px-4 py-2 border border-border rounded-lg bg-card text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer transition-all disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {isLoadingMore ? (
+                <>
+                  <svg className="animate-spin h-3.5 w-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Loading more...
+                </>
+              ) : (
+                'Load More Activity'
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 };
+

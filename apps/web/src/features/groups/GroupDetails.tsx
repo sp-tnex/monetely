@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../config/api";
 import { useToastStore } from "../../store/toastStore";
@@ -89,10 +89,18 @@ export const GroupDetails: React.FC = () => {
   const navigate = useNavigate();
 
   const [group, setGroup] = useState<Group | null>(null);
+  const announcementsObserverRef = useRef<HTMLDivElement>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [settlements, setSettlements] = useState<any[]>([]);
   const [settlementHistory, setSettlementHistory] = useState<any[]>([]);
+
+  const [expensesPage, setExpensesPage] = useState(1);
+  const [hasMoreExpenses, setHasMoreExpenses] = useState(true);
+  const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
+  const [isLoadingMoreExpenses, setIsLoadingMoreExpenses] = useState(false);
+  const [expenseSearch, setExpenseSearch] = useState("");
+  const [expenseCategory, setExpenseCategory] = useState("all");
 
   // Announcements and settings states
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -103,6 +111,11 @@ export const GroupDetails: React.FC = () => {
   const [announcementScheduled, setAnnouncementScheduled] = useState("");
   const [announcementPinned, setAnnouncementPinned] = useState(false);
   const [isSubmittingAnnouncement, setIsSubmittingAnnouncement] = useState(false);
+
+  const [announcementsPage, setAnnouncementsPage] = useState(1);
+  const [hasMoreAnnouncements, setHasMoreAnnouncements] = useState(true);
+  const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(false);
+  const [isLoadingMoreAnnouncements, setIsLoadingMoreAnnouncements] = useState(false);
 
   const [allowUpiSharing, setAllowUpiSharing] = useState(true);
   const [allowDirectSettlement, setAllowDirectSettlement] = useState(true);
@@ -132,36 +145,126 @@ export const GroupDetails: React.FC = () => {
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
 
+  const fetchExpenses = async (pageNum: number, append: boolean, search: string, category: string) => {
+    if (!groupId) return;
+    if (pageNum === 1) {
+      setIsLoadingExpenses(true);
+    } else {
+      setIsLoadingMoreExpenses(true);
+    }
+    try {
+      const response = await api.get(`/groups/${groupId}/expenses`, {
+        params: {
+          page: pageNum,
+          limit: 10,
+          search: search || undefined,
+          category: category !== 'all' ? category : undefined,
+        }
+      });
+      const fetchedExpenses = response.data.data.expenses || response.data.data || [];
+      
+      setExpenses(prev => append ? [...prev, ...fetchedExpenses] : fetchedExpenses);
+      setHasMoreExpenses(response.data.data.hasMore ?? false);
+    } catch (err) {
+      console.error('Failed to fetch expenses:', err);
+    } finally {
+      setIsLoadingExpenses(false);
+      setIsLoadingMoreExpenses(false);
+    }
+  };
+
+  const handleLoadMoreExpenses = () => {
+    if (isLoadingExpenses || isLoadingMoreExpenses || !hasMoreExpenses) return;
+    const nextPage = expensesPage + 1;
+    setExpensesPage(nextPage);
+    fetchExpenses(nextPage, true, expenseSearch, expenseCategory);
+  };
+
+  useEffect(() => {
+    setExpensesPage(1);
+    fetchExpenses(1, false, expenseSearch, expenseCategory);
+  }, [groupId, expenseSearch, expenseCategory]);
+
+  const fetchAnnouncements = async (pageNum: number, append: boolean) => {
+    if (!groupId) return;
+    if (pageNum === 1) {
+      setIsLoadingAnnouncements(true);
+    } else {
+      setIsLoadingMoreAnnouncements(true);
+    }
+    try {
+      const response = await api.get(`/groups/${groupId}/announcements`, {
+        params: {
+          page: pageNum,
+          limit: 5,
+        }
+      });
+      const fetchedAnnouncements = response.data.data.announcements || response.data.data || [];
+      const total = response.data.data.total || 0;
+      
+      setAnnouncements(prev => append ? [...prev, ...fetchedAnnouncements] : fetchedAnnouncements);
+      setHasMoreAnnouncements(pageNum * 5 < total);
+    } catch (err) {
+      console.error('Failed to fetch announcements:', err);
+    } finally {
+      setIsLoadingAnnouncements(false);
+      setIsLoadingMoreAnnouncements(false);
+    }
+  };
+
+  const handleLoadMoreAnnouncements = () => {
+    if (isLoadingAnnouncements || isLoadingMoreAnnouncements || !hasMoreAnnouncements) return;
+    const nextPage = announcementsPage + 1;
+    setAnnouncementsPage(nextPage);
+    fetchAnnouncements(nextPage, true);
+  };
+
+  useEffect(() => {
+    setAnnouncementsPage(1);
+    fetchAnnouncements(1, false);
+  }, [groupId]);
+
+  useEffect(() => {
+    if (!hasMoreAnnouncements || isLoadingAnnouncements || isLoadingMoreAnnouncements) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        handleLoadMoreAnnouncements();
+      }
+    }, { threshold: 0.1 });
+
+    if (announcementsObserverRef.current) {
+      observer.observe(announcementsObserverRef.current);
+    }
+
+    return () => {
+      if (announcementsObserverRef.current) {
+        observer.unobserve(announcementsObserverRef.current);
+      }
+    };
+  }, [hasMoreAnnouncements, isLoadingAnnouncements, isLoadingMoreAnnouncements, announcementsPage]);
+
   const fetchData = async () => {
     if (!groupId) return;
     try {
       const [
         groupRes,
         membersRes,
-        expensesRes,
         settlementsRes,
         historyRes,
         invitesRes,
-        announcementsRes,
       ] = await Promise.all([
         api.get(`/groups/${groupId}`),
         api.get(`/groups/${groupId}/members`),
-        api.get(`/groups/${groupId}/expenses`),
         api.get(`/groups/${groupId}/settlements`),
         api.get(`/groups/${groupId}/settlements/history`),
         api
           .get(`/groups/${groupId}/invites`)
           .catch(() => ({ data: { data: { invites: [] } } })),
-        api
-          .get(`/groups/${groupId}/announcements`)
-          .catch(() => ({ data: { data: { announcements: [] } } })),
       ]);
 
       setGroup(groupRes.data.data.group);
       setMembers(membersRes.data.data.members);
-      setExpenses(
-        expensesRes.data.data.expenses || expensesRes.data.data || [],
-      );
       setSettlements(
         settlementsRes.data.data.transactions || settlementsRes.data.data || [],
       );
@@ -169,7 +272,6 @@ export const GroupDetails: React.FC = () => {
         historyRes.data.data.settlements || historyRes.data.data || [],
       );
       setGroupInvites(invitesRes.data?.data?.invites || []);
-      setAnnouncements(announcementsRes.data?.data?.announcements || []);
     } catch (err: any) {
       console.error(err);
       addToast(
@@ -325,6 +427,9 @@ export const GroupDetails: React.FC = () => {
       addToast("Expense recorded successfully!", "success");
       setIsAddExpenseOpen(false);
       fetchData();
+      setExpensesPage(1);
+      fetchExpenses(1, false, expenseSearch, expenseCategory);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error(err);
       addToast(
@@ -343,6 +448,9 @@ export const GroupDetails: React.FC = () => {
       await api.delete(`/groups/${groupId}/expenses/${expenseId}`);
       addToast("Expense deleted successfully", "success");
       fetchData();
+      setExpensesPage(1);
+      fetchExpenses(1, false, expenseSearch, expenseCategory);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error(err);
       addToast(
@@ -401,6 +509,8 @@ export const GroupDetails: React.FC = () => {
       setAnnouncementScheduled("");
       setAnnouncementPinned(false);
       fetchData();
+      setAnnouncementsPage(1);
+      fetchAnnouncements(1, false);
     } catch (err: any) {
       console.error(err);
       addToast(err.response?.data?.message || "Failed to create announcement", "error");
@@ -417,6 +527,8 @@ export const GroupDetails: React.FC = () => {
       await api.delete(`/groups/${groupId}/announcements/${id}`);
       addToast("Announcement deleted successfully", "success");
       fetchData();
+      setAnnouncementsPage(1);
+      fetchAnnouncements(1, false);
     } catch (err: any) {
       console.error(err);
       addToast(err.response?.data?.message || "Failed to delete announcement", "error");
@@ -429,6 +541,8 @@ export const GroupDetails: React.FC = () => {
       await api.patch(`/groups/${groupId}/announcements/${id}/pin`, { isPinned: !isPinned });
       addToast(`Announcement ${!isPinned ? "pinned" : "unpinned"} successfully!`, "success");
       fetchData();
+      setAnnouncementsPage(1);
+      fetchAnnouncements(1, false);
     } catch (err: any) {
       console.error(err);
       addToast(err.response?.data?.message || "Failed to update pinned status", "error");
@@ -796,7 +910,7 @@ export const GroupDetails: React.FC = () => {
               <div className="flex flex-col gap-4">
                 {/* Group Announcements */}
                 {announcements.length > 0 && (
-                  <div className="flex flex-col gap-2.5 mb-2">
+                  <div className="flex flex-col gap-2.5 mb-2 max-h-[300px] overflow-y-auto pr-1 border border-border/40 p-1.5 rounded-xl bg-secondary/5 scrollbar-thin">
                     {announcements.map((ann) => (
                       <div
                         key={ann._id}
@@ -850,6 +964,25 @@ export const GroupDetails: React.FC = () => {
                         </div>
                       </div>
                     ))}
+
+                    {hasMoreAnnouncements && (
+                      <div ref={announcementsObserverRef} className="flex justify-center items-center py-2 select-none">
+                        <button
+                          onClick={handleLoadMoreAnnouncements}
+                          disabled={isLoadingMoreAnnouncements}
+                          className="px-3 py-1.5 border border-border rounded-lg bg-card text-[10px] font-semibold text-muted-foreground hover:text-foreground cursor-pointer transition-all disabled:opacity-50 flex items-center gap-1.5"
+                        >
+                          {isLoadingMoreAnnouncements ? (
+                            <>
+                              <Loader2 className="animate-spin h-3 w-3" />
+                              Loading more...
+                            </>
+                          ) : (
+                            'Load More Announcements'
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -869,6 +1002,14 @@ export const GroupDetails: React.FC = () => {
                   currentUserId={currentUser?.id || ""}
                   currency={group.currency}
                   onDeleteExpense={handleDeleteExpense}
+                  searchQuery={expenseSearch}
+                  setSearchQuery={setExpenseSearch}
+                  selectedCategory={expenseCategory}
+                  setSelectedCategory={setExpenseCategory}
+                  hasMore={hasMoreExpenses}
+                  onLoadMore={handleLoadMoreExpenses}
+                  isLoadingMore={isLoadingMoreExpenses}
+                  isLoading={isLoadingExpenses}
                 />
               </div>
             )}

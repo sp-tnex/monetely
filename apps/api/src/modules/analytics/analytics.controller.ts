@@ -108,8 +108,8 @@ export class AnalyticsController {
 
   async getClosingStatuses(req: Request, res: Response) {
     const groupId = req.params.groupId as string;
-    const statuses = await analyticsService.getAllClosingStatuses(groupId);
-    res.status(200).json({ success: true, data: statuses });
+    const { statuses, total, page, limit, hasMore } = await analyticsService.getAllClosingStatuses(groupId, req.query);
+    res.status(200).json({ success: true, data: { statuses, total, page, limit, hasMore } });
   }
 }
 

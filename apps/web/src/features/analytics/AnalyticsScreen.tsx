@@ -99,7 +99,12 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
   const [categoryReport, setCategoryReport] = useState<any>(null);
   const [trendReport, setTrendReport] = useState<any>(null);
   const [fyReport, setFyReport] = useState<any>(null);
+  
   const [closingStatuses, setClosingStatuses] = useState<any[]>([]);
+  const [closingPage, setClosingPage] = useState(1);
+  const [closingTotal, setClosingTotal] = useState(0);
+  const [closingHasMore, setClosingHasMore] = useState(false);
+
   const [selectedSnapshot, setSelectedSnapshot] = useState<any>(null);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -126,6 +131,19 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
 
   const currentMonthLabel = months.find((m) => m.value === selectedMonth)?.label || 'Month';
 
+  const fetchClosingStatuses = async (pageNum: number) => {
+    if (!groupId) return;
+    try {
+      const closingRes = await api.get(`/groups/${groupId}/analytics/closing/statuses?page=${pageNum}&limit=5`);
+      const closingData = closingRes.data.data;
+      setClosingStatuses(closingData.statuses || closingData || []);
+      setClosingTotal(closingData.total || 0);
+      setClosingHasMore(closingData.hasMore || false);
+    } catch (err) {
+      console.error('Failed to fetch closing statuses:', err);
+    }
+  };
+
   const fetchAnalyticsData = async () => {
     if (!groupId) return;
     setIsLoading(true);
@@ -144,9 +162,6 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
 
       const trendRes = await api.get(`/groups/${groupId}/analytics/trends?month=${selectedMonth}&year=${selectedYear}`);
       setTrendReport(trendRes.data.data);
-
-      const closingRes = await api.get(`/groups/${groupId}/analytics/closing/statuses`);
-      setClosingStatuses(closingRes.data.data || []);
     } catch (err: any) {
       console.error(err);
       addToast(err.response?.data?.message || 'Failed to fetch analytics metrics', 'error');
@@ -171,6 +186,10 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
   }, [groupId, selectedMonth, selectedYear]);
 
   useEffect(() => {
+    fetchClosingStatuses(closingPage);
+  }, [groupId, closingPage]);
+
+  useEffect(() => {
     if (activeTab === 'fy') {
       fetchFyData();
     }
@@ -184,6 +203,8 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
       await api.post(`/groups/${groupId}/analytics/closing/close`, { month: selectedMonth, year: selectedYear });
       addToast(`Month ${currentMonthLabel} ${selectedYear} closed successfully!`, 'success');
       fetchAnalyticsData();
+      setClosingPage(1);
+      fetchClosingStatuses(1);
     } catch (err: any) {
       addToast(err.response?.data?.message || 'Failed to close month', 'error');
     }
@@ -197,6 +218,8 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
       await api.post(`/groups/${groupId}/analytics/closing/reopen`, { month: monthNum, year: yearNum });
       addToast(`Month reopened successfully!`, 'success');
       fetchAnalyticsData();
+      setClosingPage(1);
+      fetchClosingStatuses(1);
     } catch (err: any) {
       addToast(err.response?.data?.message || 'Failed to reopen month', 'error');
     }
@@ -210,6 +233,8 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
       await api.post(`/groups/${groupId}/analytics/closing/lock`, { month: monthNum, year: yearNum });
       addToast(`Month locked permanently.`, 'success');
       fetchAnalyticsData();
+      setClosingPage(1);
+      fetchClosingStatuses(1);
     } catch (err: any) {
       addToast(err.response?.data?.message || 'Failed to lock month', 'error');
     }
@@ -478,6 +503,32 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
                       </tbody>
                     </table>
                   </div>
+
+                  {closingTotal > 5 && (
+                    <div className="flex justify-between items-center mt-4 bg-secondary/20 border border-border/80 p-2.5 rounded-lg select-none">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={closingPage === 1}
+                        onClick={() => setClosingPage(prev => Math.max(prev - 1, 1))}
+                        className="text-xs h-8 px-3"
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-xs text-muted-foreground font-semibold">
+                        Page {closingPage} of {Math.ceil(closingTotal / 5) || 1}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!closingHasMore}
+                        onClick={() => setClosingPage(prev => prev + 1)}
+                        className="text-xs h-8 px-3"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -844,6 +895,32 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
                         </div>
                       ))}
                     </div>
+
+                    {closingTotal > 5 && (
+                      <div className="flex justify-between items-center mt-4 bg-card border border-border p-2.5 rounded-lg select-none">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={closingPage === 1}
+                          onClick={() => setClosingPage(prev => Math.max(prev - 1, 1))}
+                          className="text-xs h-8 px-3"
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-xs text-muted-foreground font-semibold">
+                          Page {closingPage} of {Math.ceil(closingTotal / 5) || 1}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!closingHasMore}
+                          onClick={() => setClosingPage(prev => prev + 1)}
+                          className="text-xs h-8 px-3"
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

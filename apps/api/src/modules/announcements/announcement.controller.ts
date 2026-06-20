@@ -3,8 +3,11 @@ import { announcementService } from './announcement.service';
 
 export class AnnouncementController {
   async getAnnouncements(req: Request, res: Response) {
-    const announcements = await announcementService.getAnnouncements(req.params.groupId as string);
-    res.status(200).json({ status: 'success', data: { announcements } });
+    const { announcements, total, page, limit, hasMore } = await announcementService.getAnnouncements(
+      req.params.groupId as string,
+      req.query
+    );
+    res.status(200).json({ status: 'success', data: { announcements, total, page, limit, hasMore } });
   }
 
   async createAnnouncement(req: Request, res: Response) {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Search, Trash2, FileText, HelpCircle } from 'lucide-react';
 import { cn } from '../../utils/cn';
@@ -37,6 +37,14 @@ interface ExpenseTimelineProps {
   currentUserId: string;
   currency: string;
   onDeleteExpense: (expenseId: string) => Promise<void>;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  selectedCategory: string;
+  setSelectedCategory: (category: string) => void;
+  hasMore: boolean;
+  onLoadMore: () => void;
+  isLoadingMore: boolean;
+  isLoading: boolean;
 }
 
 export const ExpenseTimeline: React.FC<ExpenseTimelineProps> = ({
@@ -45,9 +53,16 @@ export const ExpenseTimeline: React.FC<ExpenseTimelineProps> = ({
   currentUserId,
   currency,
   onDeleteExpense,
+  searchQuery,
+  setSearchQuery,
+  selectedCategory,
+  setSelectedCategory,
+  hasMore,
+  onLoadMore,
+  isLoadingMore,
+  isLoading,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const observerRef = useRef<HTMLDivElement>(null);
 
   // Map user IDs to usernames for easy lookup
   const userMap = members.reduce((acc, m) => {
@@ -63,13 +78,27 @@ export const ExpenseTimeline: React.FC<ExpenseTimelineProps> = ({
     return userMap[userIdOrObj] || 'Unknown User';
   };
 
-  const filteredExpenses = expenses.filter((exp) => {
-    const matchesSearch = exp.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || exp.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  useEffect(() => {
+    if (!hasMore || isLoading || isLoadingMore) return;
 
-  const categories = ['all', ...Array.from(new Set(expenses.map((e) => e.category)))];
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        onLoadMore();
+      }
+    }, { threshold: 0.1 });
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observer.unobserve(observerRef.current);
+      }
+    };
+  }, [hasMore, isLoading, isLoadingMore, onLoadMore]);
+
+  const categories = ['all', 'general', 'food', 'travel', 'rent', 'entertainment', 'settlement'];
 
   return (
     <div className="flex flex-col gap-5">
@@ -108,7 +137,14 @@ export const ExpenseTimeline: React.FC<ExpenseTimelineProps> = ({
         </div>
       </div>
 
-      {filteredExpenses.length === 0 ? (
+      {isLoading && expenses.length === 0 ? (
+        <div className="flex justify-center items-center py-12">
+          <svg className="animate-spin h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+        </div>
+      ) : expenses.length === 0 ? (
         <Card className="border-dashed border-border py-12 flex flex-col items-center justify-center text-center">
           <div className="p-3 rounded-full bg-secondary text-muted-foreground mb-3">
             <HelpCircle size={24} />
@@ -121,126 +157,151 @@ export const ExpenseTimeline: React.FC<ExpenseTimelineProps> = ({
           </p>
         </Card>
       ) : (
-        <div className="border border-border rounded-lg bg-card overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse">
-            <thead>
-              <tr className="bg-secondary/40 border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider select-none">
-                <th className="py-3 px-4 hidden md:table-cell">Category</th>
-                <th className="py-3 px-4">Description</th>
-                <th className="py-3 px-4 hidden sm:table-cell">Date</th>
-                <th className="py-3 px-4">Paid By</th>
-                <th className="py-3 px-4 text-right">Amount</th>
-                <th className="py-3 px-4 text-right">Your Share</th>
-                <th className="py-3 px-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {filteredExpenses.map((expense) => {
-                const payerId = typeof expense.paidBy === 'object' && expense.paidBy !== null ? expense.paidBy._id : expense.paidBy;
-                const isPayer = payerId === currentUserId;
-                const mySplit = expense.splits.find((s) => {
-                  const splitUserId = typeof s.user === 'object' && s.user !== null ? (s.user as any)._id : s.user;
-                  return splitUserId === currentUserId;
-                });
-                const amtOwed = mySplit ? mySplit.amountOwed : 0;
+        <div className="flex flex-col gap-4 border border-border rounded-lg bg-card max-h-[460px] overflow-y-auto scrollbar-thin">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="sticky top-0 bg-secondary/95 backdrop-blur-sm z-10">
+                <tr className="border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider select-none">
+                  <th className="py-3 px-4 hidden md:table-cell">Category</th>
+                  <th className="py-3 px-4">Description</th>
+                  <th className="py-3 px-4 hidden sm:table-cell">Date</th>
+                  <th className="py-3 px-4">Paid By</th>
+                  <th className="py-3 px-4 text-right">Amount</th>
+                  <th className="py-3 px-4 text-right">Your Share</th>
+                  <th className="py-3 px-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {expenses.map((expense) => {
+                  const payerId = typeof expense.paidBy === 'object' && expense.paidBy !== null ? expense.paidBy._id : expense.paidBy;
+                  const isPayer = payerId === currentUserId;
+                  const mySplit = expense.splits.find((s) => {
+                    const splitUserId = typeof s.user === 'object' && s.user !== null ? (s.user as any)._id : s.user;
+                    return splitUserId === currentUserId;
+                  });
+                  const amtOwed = mySplit ? mySplit.amountOwed : 0;
 
-                let balanceText: string;
-                let balanceColor = 'text-muted-foreground';
+                  let balanceText: string;
+                  let balanceColor = 'text-muted-foreground';
 
-                if (isPayer) {
-                  const sharedAmount = expense.amount - (mySplit?.amountOwed || 0);
-                  balanceText = `Lent ${currency} ${sharedAmount.toFixed(2)}`;
-                  balanceColor = 'text-green-600 font-semibold';
-                } else if (amtOwed > 0) {
-                  balanceText = `Owe ${currency} ${amtOwed.toFixed(2)}`;
-                  balanceColor = 'text-destructive font-semibold';
-                } else {
-                  balanceText = '—';
-                }
+                  if (isPayer) {
+                    const sharedAmount = expense.amount - (mySplit?.amountOwed || 0);
+                    balanceText = `Lent ${currency} ${sharedAmount.toFixed(2)}`;
+                    balanceColor = 'text-green-600 font-semibold';
+                  } else if (amtOwed > 0) {
+                    balanceText = `Owe ${currency} ${amtOwed.toFixed(2)}`;
+                    balanceColor = 'text-destructive font-semibold';
+                  } else {
+                    balanceText = '—';
+                  }
 
-                return (
-                  <tr key={expense._id} className="hover:bg-secondary/20 transition-colors">
-                    <td className="py-3 px-4 hidden md:table-cell capitalize">
-                      <span className="inline-block px-2 py-0.5 rounded bg-secondary border border-border/80 text-[10px] font-medium text-muted-foreground">
-                        {expense.category}
-                      </span>
-                    </td>
-
-                    <td className="py-3 px-4 font-medium text-foreground">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate max-w-[150px] sm:max-w-[200px]" title={expense.description}>
-                          {expense.description}
+                  return (
+                    <tr key={expense._id} className="hover:bg-secondary/20 transition-colors">
+                      <td className="py-3 px-4 hidden md:table-cell capitalize">
+                        <span className="inline-block px-2 py-0.5 rounded bg-secondary border border-border/80 text-[10px] font-medium text-muted-foreground">
+                          {expense.category}
                         </span>
-                        {expense.notes && (
-                          <span className="group/notes relative cursor-help text-muted-foreground hover:text-foreground">
-                            <FileText size={12} />
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/notes:block bg-card border border-border p-2 rounded text-[10px] shadow-sm max-w-xs z-30 w-44 text-foreground text-left leading-normal font-normal">
-                              {expense.notes}
-                            </div>
+                      </td>
+
+                      <td className="py-3 px-4 font-medium text-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate max-w-[150px] sm:max-w-[200px]" title={expense.description}>
+                            {expense.description}
                           </span>
-                        )}
-                      </div>
-                    </td>
+                          {expense.notes && (
+                            <span className="group/notes relative cursor-help text-muted-foreground hover:text-foreground">
+                              <FileText size={12} />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/notes:block bg-card border border-border p-2 rounded text-[10px] shadow-sm max-w-xs z-30 w-44 text-foreground text-left leading-normal font-normal">
+                                {expense.notes}
+                              </div>
+                            </span>
+                          )}
+                        </div>
+                      </td>
 
-                    <td className="py-3 px-4 hidden sm:table-cell text-muted-foreground font-mono">
-                      {new Date(expense.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </td>
+                      <td className="py-3 px-4 hidden sm:table-cell text-muted-foreground font-mono">
+                        {new Date(expense.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </td>
 
-                    <td className="py-3 px-4 text-muted-foreground">
-                      {getUsername(expense.paidBy)}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-medium text-foreground">
-                      {currency} {expense.amount.toFixed(2)}
-                    </td>
+                      <td className="py-3 px-4 text-muted-foreground">
+                        {getUsername(expense.paidBy)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-medium text-foreground">
+                        {currency} {expense.amount.toFixed(2)}
+                      </td>
 
-                    <td className="py-3 px-4 text-right font-mono">
-                      <span className={balanceColor}>{balanceText}</span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <div className="inline-flex items-center justify-center gap-1">
-                        <div className="relative group/splits">
-                          <button
-                            className="px-1.5 py-0.5 rounded border border-border bg-white text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:border-gray-400 cursor-help"
-                          >
-                            Splits
-                          </button>
-                          <div className="absolute bottom-full right-0 mb-2 hidden group-hover/splits:block bg-card border border-border p-2.5 rounded-lg shadow-sm z-30 w-48 text-left">
-                            <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5 pb-1 border-b border-border">
-                              Split Breakdown
-                            </h5>
-                            <div className="flex flex-col gap-1">
-                              {expense.splits.map((s, idx) => (
-                                <div key={idx} className="flex justify-between items-center text-[10px] text-foreground">
-                                  <span className="font-medium truncate max-w-[90px]">
-                                    {getUsername(s.user)}
-                                  </span>
-                                  <span className="text-muted-foreground font-mono text-[9px]">
-                                    {currency} {s.amountOwed.toFixed(2)}
-                                    {s.percentage !== undefined && ` (${s.percentage}%)`}
-                                  </span>
-                                </div>
-                              ))}
+                      <td className="py-3 px-4 text-right font-mono">
+                        <span className={balanceColor}>{balanceText}</span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="inline-flex items-center justify-center gap-1">
+                          <div className="relative group/splits">
+                            <button
+                              className="px-1.5 py-0.5 rounded border border-border bg-white text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:border-gray-400 cursor-help"
+                            >
+                              Splits
+                            </button>
+                            <div className="absolute bottom-full right-0 mb-2 hidden group-hover/splits:block bg-card border border-border p-2.5 rounded-lg shadow-sm z-30 w-48 text-left">
+                              <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5 pb-1 border-b border-border">
+                                Split Breakdown
+                              </h5>
+                              <div className="flex flex-col gap-1">
+                                {expense.splits.map((s, idx) => (
+                                  <div key={idx} className="flex justify-between items-center text-[10px] text-foreground">
+                                    <span className="font-medium truncate max-w-[90px]">
+                                      {getUsername(s.user)}
+                                    </span>
+                                    <span className="text-muted-foreground font-mono text-[9px]">
+                                      {currency} {s.amountOwed.toFixed(2)}
+                                      {s.percentage !== undefined && ` (${s.percentage}%)`}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <button
-                          className="p-1 rounded text-destructive hover:bg-destructive/10 cursor-pointer"
-                          onClick={() => onDeleteExpense(expense._id)}
-                          title="Delete expense"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                          <button
+                            className="p-1 rounded text-destructive hover:bg-destructive/10 cursor-pointer"
+                            onClick={() => onDeleteExpense(expense._id)}
+                            title="Delete expense"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {hasMore && (
+            <div ref={observerRef} className="flex justify-center items-center py-4 select-none">
+              <button
+                onClick={onLoadMore}
+                disabled={isLoadingMore}
+                className="px-4 py-2 border border-border rounded-lg bg-card text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer transition-all disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <svg className="animate-spin h-3.5 w-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Loading more...
+                  </>
+                ) : (
+                  'Load More Expenses'
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 };
+
 export default ExpenseTimeline;

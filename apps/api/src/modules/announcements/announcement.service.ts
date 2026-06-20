@@ -1,23 +1,40 @@
 import { announcementRepository } from './announcement.repository';
+import { Announcement } from './announcement.model';
 import { groupMemberRepository } from '../groups/group.repository';
 import { AppError } from '../../core/errors/AppError';
 import { webhookService } from '../groups/webhook.service';
 
 export class AnnouncementService {
-  async getAnnouncements(groupId: string) {
+  async getAnnouncements(groupId: string, queryParams: any = {}) {
     const now = new Date();
-    return announcementRepository.find(
-      {
-        group: groupId,
-        $and: [
-          { $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gt: now } }] },
-          { $or: [{ scheduledFor: { $exists: false } }, { scheduledFor: null }, { scheduledFor: { $lte: now } }] }
-        ]
-      },
-      0,
-      50,
+    const page = parseInt(queryParams.page as string, 10) || 1;
+    const limit = parseInt(queryParams.limit as string, 10) || 5;
+    const skip = (page - 1) * limit;
+
+    const filter = {
+      group: groupId,
+      $and: [
+        { $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gt: now } }] },
+        { $or: [{ scheduledFor: { $exists: false } }, { scheduledFor: null }, { scheduledFor: { $lte: now } }] }
+      ]
+    };
+
+    const announcements = await announcementRepository.find(
+      filter,
+      skip,
+      limit,
       { isPinned: -1, createdAt: -1 }
     );
+
+    const total = await Announcement.countDocuments(filter);
+
+    return {
+      announcements,
+      total,
+      page,
+      limit,
+      hasMore: skip + announcements.length < total
+    };
   }
 
   async createAnnouncement(

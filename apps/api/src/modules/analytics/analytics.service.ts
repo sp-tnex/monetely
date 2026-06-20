@@ -596,8 +596,25 @@ export class AnalyticsService {
     return snapshot;
   }
 
-  async getAllClosingStatuses(groupId: string) {
-    return await MonthClosing.find({ group: new mongoose.Types.ObjectId(groupId) }).sort({ year: -1, month: -1 });
+  async getAllClosingStatuses(groupId: string, queryParams: any = {}) {
+    const page = parseInt(queryParams.page as string, 10) || 1;
+    const limit = parseInt(queryParams.limit as string, 10) || 10;
+    const skip = (page - 1) * limit;
+
+    const statuses = await MonthClosing.find({ group: new mongoose.Types.ObjectId(groupId) })
+      .sort({ year: -1, month: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await MonthClosing.countDocuments({ group: new mongoose.Types.ObjectId(groupId) });
+
+    return {
+      statuses,
+      total,
+      page,
+      limit,
+      hasMore: skip + statuses.length < total
+    };
   }
 }
 

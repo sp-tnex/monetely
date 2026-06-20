@@ -54,11 +54,12 @@ export class GroupController {
   }
 
   async getGroupActivity(req: Request, res: Response) {
-    const activities = await activityService.getGroupActivity(
+    const { activities, total, page, limit, hasMore } = await activityService.getGroupActivity(
       req.params.id as string,
-      req.user.id
+      req.user.id,
+      req.query
     );
-    res.status(200).json({ status: 'success', data: { activities } });
+    res.status(200).json({ status: 'success', data: { activities, total, page, limit, hasMore } });
   }
 
   async exportGroupData(req: Request, res: Response) {

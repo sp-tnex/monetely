@@ -23,17 +23,32 @@ export class ActivityService {
     }
   }
 
-  async getGroupActivity(groupId: string, userId: string) {
+  async getGroupActivity(groupId: string, userId: string, queryParams: any = {}) {
     const isMember = await groupMemberRepository.findOne({ group: groupId, user: userId });
     if (!isMember) {
       throw new AppError('You are not a member of this group', 403);
     }
 
     const { GroupActivity } = require('./activity.model');
-    return GroupActivity.find({ group: groupId })
+    const page = parseInt(queryParams.page as string, 10) || 1;
+    const limit = parseInt(queryParams.limit as string, 10) || 15;
+    const skip = (page - 1) * limit;
+
+    const activities = await GroupActivity.find({ group: groupId })
       .sort('-createdAt')
-      .limit(100)
+      .skip(skip)
+      .limit(limit)
       .populate('actor', 'username email avatarUrl');
+
+    const total = await GroupActivity.countDocuments({ group: groupId });
+
+    return {
+      activities,
+      total,
+      page,
+      limit,
+      hasMore: skip + activities.length < total
+    };
   }
 }
 
