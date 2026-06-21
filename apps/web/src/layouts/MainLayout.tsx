@@ -15,7 +15,9 @@ import {
   PlusCircle,
   Settings,
   Mail,
+  Rss,
 } from 'lucide-react';
+
 import { Avatar } from '../components/ui/Avatar';
 import { cn } from '../utils/cn';
 
@@ -54,8 +56,10 @@ export const MainLayout: React.FC = () => {
       icon: <Mail size={18} />,
       badge: pendingCount > 0 ? pendingCount : undefined
     },
+    { to: '/rss', label: 'RSS', icon: <Rss size={18} /> },
     { to: '/profile', label: 'Settings', icon: <Settings size={18} /> },
   ];
+
   const handleLogout = () => {
     clearAuth();
     addToast('Logged out successfully', 'success');

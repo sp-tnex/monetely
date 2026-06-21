@@ -65,6 +65,7 @@ export const initSocket = (httpServer: HTTPServer) => {
     const userId = user._id.toString();
 
     onlineUsers.set(userId, socket.id);
+    socket.join(`user:${userId}`);
     logger.info(`User ${user.username} (${userId}) connected to Socket.IO`);
 
     socket.broadcast.emit('chat:presenceUpdate', {

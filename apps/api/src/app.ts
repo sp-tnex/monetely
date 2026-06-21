@@ -94,6 +94,8 @@ import inviteRoutes from "./modules/invites/invite.routes";
 import retentionRoutes from "./modules/retention/retention.routes";
 import exportRoutes from "./modules/export/export.routes";
 import chatRoutes from "./modules/chat/chat.routes";
+import rssRoutes from "./modules/rss/rss.routes";
+
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
@@ -106,6 +108,8 @@ app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/invites", inviteRoutes);
 app.use("/api/v1/exports", exportRoutes);
 app.use("/api/v1/chat", chatRoutes);
+app.use("/api/v1/rss", rssRoutes);
+
 
 app.all("*", (req, res, next) => {
   next(new AppError(`Route ${req.originalUrl} not found`, 404));

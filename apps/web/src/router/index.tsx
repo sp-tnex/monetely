@@ -12,7 +12,9 @@ const CreateGroup = React.lazy(() => import('../features/groups/CreateGroup'));
 const GroupDetails = React.lazy(() => import('../features/groups/GroupDetails'));
 const ProfileSettings = React.lazy(() => import('../features/profile/ProfileSettings'));
 const InviteAccept = React.lazy(() => import('../features/groups/InviteAccept'));
+const RssDashboard = React.lazy(() => import('../features/rss/RssDashboard'));
 const NotFound = React.lazy(() => import('../features/errors/NotFound'));
+
 const Terms = React.lazy(() => import('../features/legal/Terms'));
 const Privacy = React.lazy(() => import('../features/legal/Privacy'));
 
@@ -51,6 +53,8 @@ export const AppRouter: React.FC = () => {
               <Route path="/groups/:groupId" element={<GroupDetails />} />
               <Route path="/invites" element={<Navigate to="/profile?tab=invites" replace />} />
               <Route path="/profile" element={<ProfileSettings />} />
+              <Route path="/rss" element={<RssDashboard />} />
+
             </Route>
           </Route>
 

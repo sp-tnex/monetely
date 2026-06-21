@@ -18,4 +18,5 @@ __exportStar(require("./auth.schema"), exports);
 __exportStar(require("./group.schema"), exports);
 __exportStar(require("./expense.schema"), exports);
 __exportStar(require("./invite.schema"), exports);
+__exportStar(require("./rss.schema"), exports);
 //# sourceMappingURL=index.js.map
